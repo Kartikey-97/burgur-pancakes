@@ -301,6 +301,30 @@ After implementation, report:
 
 Do not implement the next AI component.
 
+### AI-layer LLM wrapper (step 5)
+
+Implement only `ai/llm.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current architecture
+
+Person A's backend exposes the public integration boundary:
+
+```python
+evaluate_and_ask(
+    pending_question: str,
+    answer: str,
+    day_obj: dict,
+    candidate_profile: dict,
+    theta: float,
+    history: list[dict],
+) -> dict
+```
+
+
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
 ```text
