@@ -3,6 +3,12 @@
 ## 1) kshiraj
 *(Add your prompts here)*
 
+### AI-layer scaffold (step 1)
+Created `ai/__init__.py` as a minimal package marker.
+No modules, no functionality, no new dependencies — intentionally small first step.
+Other files in `ai/` (`llm.py`, `schemas.py`, etc.) pre-exist from earlier work and are not yet part of the active scaffold.
+
+
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
 ```text
