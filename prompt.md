@@ -369,7 +369,148 @@ ai/
 
 ## Embeddings
 
+Update only the dependency declaration needed for the Person B local embedding implementation.
 
+IMPORTANT:
+The existing `ai/embeddings.py` implementation is currently WRONG because it uses the Gemini embedding API. Do not use or preserve that implementation.
+
+## Current state
+
+`backend/requirements.txt` currently contains exactly:
+
+fastapi
+uvicorn
+pydantic
+requests
+
+The local Python environment has already been verified to support:
+
+- Python 3.13.9
+- Apple Silicon arm64
+- sentence-transformers 5.7.0
+- torch 2.13.0
+- numpy 2.5.1
+- Apple MPS available
+
+## Required change
+
+Modify ONLY:
+
+```text
+backend/requirements.txt
+```
+
+## Similarity 
+Implement only `ai/similarity.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+├── llm.py
+├── service.py
+├── confidence.py
+└── embeddings.py
+
+`ai/embeddings.py` is now implemented using the local model:
+
+BAAI/bge-small-en-v1.5
+
+It returns 384-dimensional embedding vectors as plain Python lists.
+
+## Goal
+
+Create a minimal local semantic similarity utility.
+
+Its only responsibility is to compare two already-computed embedding vectors and return their cosine similarity.
+
+## Public API
+
+Implement:
+
+```python
+def cosine_similarity(
+    embedding_a: list[float],
+    embedding_b: list[float],
+) -> float:
+    ...
+```
+
+# Memory
+
+### AI-layer semantic memory retrieval (next step)
+
+Implement only `ai/memory.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+├── llm.py
+├── service.py
+├── confidence.py
+├── embeddings.py
+└── similarity.py
+
+The existing modules provide:
+
+- `ai.embeddings.embed_text(text)`:
+    text -> local 384-dimensional embedding using
+    `BAAI/bge-small-en-v1.5`
+
+- `ai.similarity.cosine_similarity(a, b)`:
+    two embeddings -> cosine similarity float
+
+- `ai.context.HistoryEntry`:
+    {
+        "day": int,
+        "question": str,
+        "answer": str,
+        "score": int,
+        "notable_quote": str | None
+    }
+
+## Goal
+
+Create a minimal semantic-memory retrieval utility.
+
+Its only responsibility is:
+
+Given the candidate's current answer and the existing interview history, find the most semantically similar previous interview answer.
+
+This will later allow `evaluate_and_ask()` to make callbacks such as:
+
+"Earlier you mentioned X. How would that apply here?"
+
+## Public API
+
+Implement:
+
+```python
+def find_similar_prior_answer(
+    current_answer: str,
+    history: list[dict],
+) -> Optional[dict]:
+    ...
+```
 
 
 
