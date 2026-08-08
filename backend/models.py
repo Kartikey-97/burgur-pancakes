@@ -1,0 +1,45 @@
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+
+# Candidate Models
+class CandidateMember(BaseModel):
+    id: str
+    name: str
+    jobRole: str
+    yearsExperience: int
+    education: str
+    status: str
+
+class CandidateMission(BaseModel):
+    day: int
+    title: str
+    passed: Optional[bool] = False
+    skipped: Optional[bool] = False
+    attempts: Optional[int] = 0
+
+class CandidateSignals(BaseModel):
+    commitDays: int
+    missionsCompleted: int
+    missionsFirstTry: int
+
+class Candidate(BaseModel):
+    member: CandidateMember
+    missions: List[CandidateMission]
+    signals: CandidateSignals
+
+# API Request/Response Models
+class TurnInterviewRequest(BaseModel):
+    sessionId: str
+    message: Optional[str] = None
+    candidate: Optional[Candidate] = None # First request has this; subsequent requests might also send it defensively
+
+class Feedback(BaseModel):
+    summary: str
+    strengths: List[str]
+    gaps: List[str]
+    next: List[str]
+
+class InterviewResponse(BaseModel):
+    reply: str
+    done: bool
+    feedback: Optional[Feedback] = None
