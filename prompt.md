@@ -8,6 +8,117 @@ Created `ai/__init__.py` as a minimal package marker.
 No modules, no functionality, no new dependencies — intentionally small first step.
 Other files in `ai/` (`llm.py`, `schemas.py`, etc.) pre-exist from earlier work and are not yet part of the active scaffold.
 
+### Prompt used
+
+Now implement only `ai/schemas.py`.
+
+The current repository has already been inspected and the public integration contract is confirmed.
+
+### Ground-truth public interface
+
+Person A calls:
+
+```python
+evaluate_and_ask(
+    pending_question: str,
+    answer: str,
+    day_obj: dict,
+    candidate_profile: dict,
+    theta: float,
+    history: list[dict],
+) -> dict
+```
+
+The combined per-turn result is:
+
+```python
+{
+    "score": ...,
+    "needs_followup": ...,
+    "next_question": ...,
+    "notable_quote": ...
+}
+```
+
+This represents ONE LLM operation per interview turn.
+
+There is no `similar_prior_answer` argument. Person B's AI package owns local similarity/embedding logic internally.
+
+SQLite is the only persistence layer. Do not add or model Chroma, chromadb, vector stores, or any other database.
+
+### What `schemas.py` should do
+
+Create only the minimal shared typed data schemas needed by the Person B AI layer.
+
+Prefer Pydantic if the project already uses/depends on it. Otherwise use standard Python dataclasses. Do not introduce a new dependency merely for this file.
+
+At minimum, create a schema for the result of `evaluate_and_ask()` containing:
+
+* `score`
+* `needs_followup`
+* `next_question`
+* `notable_quote`
+
+Also create minimal schemas for the input/context data only if they are genuinely useful for the later AI modules.
+
+The current context consists of:
+
+* `pending_question: str`
+* `answer: str`
+* `day_obj: dict`
+* `candidate_profile: dict`
+* `theta: float`
+* `history: list[dict]`
+
+Do NOT duplicate Person A's database/session models unnecessarily.
+
+### Important boundaries
+
+Do NOT put any of the following in `schemas.py`:
+
+* Gemini/API calls
+* prompt construction
+* evaluation logic
+* question-generation logic
+* follow-up logic
+* embedding generation
+* cosine similarity
+* question deduplication
+* confidence/hedging scoring
+* database access
+* Chroma/vector-store logic
+
+Confidence/hedging is a separate local function and is NOT an LLM response field.
+
+The schema for `evaluate_and_ask()` must therefore NOT contain `confidence_flags`.
+
+Do not create separate public schemas that imply separate LLM calls such as:
+
+* `QuestionResponse`
+* `EvaluationResponse`
+* `FollowupResponse`
+
+The public per-turn result is one combined response.
+
+### Implementation constraints
+
+1. Inspect the existing project/dependencies first.
+2. Follow the existing Python style.
+3. Modify/create ONLY `ai/schemas.py`.
+4. Keep the implementation small and easy to review.
+5. Do not modify `ai/__init__.py`, Person A's files, or any other file.
+6. After implementation, run a minimal import/validation test for the new schemas.
+
+Report:
+
+* exactly which schemas were added
+* why each schema exists
+* how the main response schema maps to `evaluate_and_ask()`
+* the validation/import test performed
+
+Do not implement the next AI module yet.
+
+
 
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
