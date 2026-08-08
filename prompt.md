@@ -345,7 +345,28 @@ ai/
 └── llm.py
 ```
 
-## 
+### AI-layer confidence/hedging scoring (step 7)
+
+Implement only `ai/confidence.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+```text
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+├── llm.py
+└── service.py
+```
+
 
 
 
