@@ -324,6 +324,30 @@ evaluate_and_ask(
 ) -> dict
 ```
 
+### AI-layer service/context assembly (step 6)
+
+Implement only `ai/service.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+```text
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+└── llm.py
+```
+
+## 
+
+
 
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
