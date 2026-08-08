@@ -512,6 +512,65 @@ def find_similar_prior_answer(
     ...
 ```
 
+### AI-layer question deduplication (next step)
+
+Implement only `ai/deduplication.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+├── llm.py
+├── service.py
+├── confidence.py
+├── embeddings.py
+├── similarity.py
+└── memory.py
+
+Existing utilities:
+
+- `ai.embeddings.embed_text(text)` generates a local embedding using
+  `BAAI/bge-small-en-v1.5`.
+
+- `ai.similarity.cosine_similarity(a, b)` computes cosine similarity.
+
+- `ai.memory.find_similar_prior_answer(current_answer, history)` retrieves
+  the most semantically similar previous answer.
+
+## Goal
+
+Create a minimal local question-deduplication utility.
+
+Its responsibility is to determine whether a newly generated interview
+question is semantically too similar to a question that has already been
+asked in the interview history.
+
+This prevents the interviewer from repeatedly asking essentially the same
+question using slightly different wording.
+
+## Public API
+
+Implement:
+
+```python
+def is_duplicate_question(
+    new_question: str,
+    history: list[dict],
+    threshold: float = 0.85,
+) -> bool:
+    ...
+
+```
+
 
 
 ## 2) kartikey
