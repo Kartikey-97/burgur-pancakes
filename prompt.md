@@ -1,7 +1,6 @@
 # Prompts
 
 ## 1) kshiraj
-*(Add your prompts here)*
 
 ### AI-layer scaffold (step 1)
 Created `ai/__init__.py` as a minimal package marker.
@@ -153,6 +152,154 @@ Also check that:
 
 Do not implement `ai/context.py` just yet.
 Do not change any code.
+
+### AI-layer off-topic pre-filter (step 4)
+
+Implement only `ai/off_topic.py` for the existing Burgur-Pancakes project.
+
+The current public contract is fixed:
+
+def is_off_topic(user_answer: str) -> bool:
+    ...
+
+Person A calls this synchronously before `evaluate_and_ask()` on every INTERVIEWING turn.
+
+### Ground-truth constraints
+
+- Input is ONLY the raw answer string.
+- No question is provided.
+- No history is provided.
+- No candidate profile is provided.
+- No curriculum/day context is provided.
+- Therefore this function CANNOT reliably determine semantic topical relevance.
+- It must NOT make an LLM/API call.
+- It must NOT use a vector database.
+- Do not introduce external dependencies.
+- Keep it fast and deterministic.
+- False positives are more harmful than false negatives because `True` completely short-circuits the interview turn.
+
+### Purpose
+
+Implement a conservative local pre-filter that detects obviously invalid/gibberish/spam-like input.
+
+It may detect signals such as:
+
+- empty or whitespace-only answers
+- keyboard-mashing/random-character strings
+- excessive punctuation or symbol-only input
+- digit-only input
+- a single character repeated excessively
+- obvious repeated-character noise
+
+It must NOT attempt semantic topic detection because the function does not receive the question.
+
+### Important behavior
+
+Prefer allowing uncertain answers through.
+
+For example, do NOT automatically classify these as off-topic:
+
+- "Yes"
+- "No"
+- "Python"
+- "O(n)"
+- "Caching"
+- "REST"
+- "Transformers"
+- "It depends"
+- "Because it is faster."
+- "I would use caching here."
+
+These may be legitimate interview answers.
+
+Also allow code-heavy and number-heavy technical answers such as:
+
+- "x = 10 + y"
+- "if x == y"
+- "O(n^2) = O(n log n)"
+- "return x == y"
+- "HTTP 200 OK"
+- "top_k = 10"
+
+Do not require specific technical keywords.
+
+Do not use a large hard-coded keyword list.
+
+Do not classify a single English word such as `"gibberish"` as off-topic merely because it sounds meaningless. Without question context, it cannot be distinguished reliably from `"Python"` or `"Caching"`.
+
+### Implementation requirements
+
+1. Create only `ai/off_topic.py`.
+2. Use only Python standard-library functionality.
+3. Expose exactly:
+
+   def is_off_topic(user_answer: str) -> bool:
+
+4. Keep the implementation small, readable, deterministic, and conservative.
+5. The function must fail safely: unexpected input/errors should not crash the interview orchestrator.
+6. Do not modify:
+   - `backend/`
+   - `ai/schemas.py`
+   - `ai/context.py`
+   - `ai/__init__.py`
+   - `prompt.md`
+
+7. Do not implement:
+   - confidence scoring
+   - embeddings
+   - similarity search
+   - question deduplication
+   - Gemini/API calls
+   - prompt generation
+   - answer evaluation
+   - question generation
+   - feedback generation
+
+### Validation
+
+After implementation, run tests covering at least:
+
+TRUE / blocked:
+
+- `""`
+- `"   "`
+- `"!!!!!!!!"`
+- `"123456789"`
+- `"aaaaaaaaaaaaaaaa"`
+
+FALSE / allowed:
+
+- `"Yes"`
+- `"No"`
+- `"Python"`
+- `"O(n)"`
+- `"Caching"`
+- `"REST"`
+- `"It depends"`
+- `"Because it is faster."`
+- `"I would use caching here."`
+- `"Transformers"`
+- `"gibberish"`
+- `"x = 10 + y"`
+- `"if x == y"`
+- `"O(n^2) = O(n log n)"`
+- `"return x == y"`
+- `"HTTP 200 OK"`
+- `"top_k = 10"`
+
+Also test several normal technical answers.
+
+Do not create a permanent validation/test file unless the existing project testing structure requires it. Temporary validation scripts should remain outside the repository.
+
+After implementation, report:
+
+- the exact implementation
+- the detection rules
+- every test case and result
+- confirmation that no external API or dependency was introduced
+- confirmation that no other repository files were modified
+
+Do not implement the next AI component.
 
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
