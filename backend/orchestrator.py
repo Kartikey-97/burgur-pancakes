@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 from models import CandidateMission
+from ai_layer_interface import evaluate_and_ask, generate_opening_question, is_off_topic, generate_feedback
 
 def get_module_for_day(day: int, curriculum: Dict[str, Any]) -> int:
     for module in curriculum.get('modules', []):
@@ -77,3 +78,113 @@ def select_topics(missions: List[CandidateMission], curriculum: Dict[str, Any]) 
                 selected_days.append(m.day)
                 
     return selected_days
+
+def process_turn(session_state: dict, candidate_data: dict, user_message: str, curriculum: dict) -> dict:
+    """
+    Main state machine orchestrator function for the interview.
+    Updates session_state in place and returns a dict with the response to send back to the user.
+    """
+    phase = session_state.get('phase', 'INIT')
+    
+    # 1. Pre-filter
+    if phase == 'INTERVIEWING' and is_off_topic(user_message):
+        return {
+            "reply": "I'm not sure I follow. Could you elaborate on how that relates to the question?",
+            "done": False
+        }
+    
+    if phase == 'INIT':
+        # Initialization
+        candidate_missions_data = candidate_data.get('missions', [])
+        missions = [CandidateMission(**m) for m in candidate_missions_data]
+        topics = select_topics(missions, curriculum)
+        
+        session_state['topic_queue'] = topics
+        session_state['topic_index'] = 0
+        session_state['questions_asked'] = 0
+        session_state['distinct_days_covered'] = 0
+        session_state['followups_used_this_topic'] = 0
+        session_state['theta'] = 0.0
+        session_state['history'] = []
+        
+        first_topic = topics[0] if topics else "general software engineering"
+        question = generate_opening_question(candidate_data, f"Day {first_topic}")
+        
+        session_state['pending_question'] = question
+        session_state['phase'] = 'INTERVIEWING'
+        session_state['distinct_days_covered'] = 1
+        
+        session_state['history'].append({"role": "assistant", "content": question})
+        
+        return {
+            "reply": question,
+            "done": False
+        }
+    
+    elif phase == 'INTERVIEWING':
+        # Evaluate user answer
+        session_state['history'].append({"role": "user", "content": user_message})
+        
+        # Prepare context for next question if we don't need a followup
+        current_topic = session_state['topic_queue'][session_state['topic_index']]
+        next_topic_idx = session_state['topic_index'] + 1
+        next_topic = session_state['topic_queue'][next_topic_idx] if next_topic_idx < len(session_state['topic_queue']) else None
+        next_topic_context = f"Day {next_topic}" if next_topic else None
+        
+        # LLM Call
+        try:
+            evaluation = evaluate_and_ask(
+                candidate_data, 
+                session_state['history'], 
+                session_state['pending_question'], 
+                user_message,
+                next_topic_context=next_topic_context
+            )
+        except Exception as e:
+            # Fallback handling
+            print(f"AI Layer Error: {e}")
+            return {
+                "reply": "I see. Let's move on to the next topic.",
+                "done": False
+            }
+        
+        # Update theta (simple IRT approximation)
+        LEARNING_RATE = 0.5
+        actual_score = evaluation.get('score', 2.0)
+        # expected score could be a function of theta, mock it as 2.0 for now
+        expected_score = 2.0
+        session_state['theta'] += LEARNING_RATE * (actual_score / 4.0 - expected_score / 4.0)
+        
+        # Determine next state
+        session_state['questions_asked'] += 1
+        
+        needs_followup = evaluation.get('needs_followup', False)
+        if not needs_followup or session_state['followups_used_this_topic'] >= 2:
+            # Move to next topic
+            session_state['topic_index'] += 1
+            session_state['followups_used_this_topic'] = 0
+            if session_state['topic_index'] < len(session_state['topic_queue']):
+                session_state['distinct_days_covered'] += 1
+        else:
+            session_state['followups_used_this_topic'] += 1
+            
+        next_question = evaluation.get('next_question', "Let's move on.")
+        session_state['pending_question'] = next_question
+        session_state['history'].append({"role": "assistant", "content": next_question})
+        
+        # Termination check
+        if session_state['questions_asked'] >= 8 and session_state['distinct_days_covered'] >= 4:
+            session_state['phase'] = 'CLOSING'
+            
+        return {
+            "reply": next_question,
+            "done": False
+        }
+        
+    elif phase == 'CLOSING':
+        feedback = generate_feedback(candidate_data, session_state['history'])
+        return {
+            "reply": "Thank you for your time. Here is your feedback.",
+            "done": True,
+            "feedback": feedback
+        }
