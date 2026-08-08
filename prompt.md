@@ -118,7 +118,41 @@ Report:
 
 Do not implement the next AI module yet.
 
+### AI-layer context inspection
 
+Before we do anything, examine the current codebase so that we can make a definition of the next AI-layer increment based on the current code.
+
+DO NOT change any code in any file.
+
+Examine:
+
+1. `backend/session.py`
+2. `backend/models.py`
+3. `backend/orchestrator.py`
+4. `backend/ai_layer_interface.py`
+5. `ai/schemas.py`
+
+I need the structure of:
+
+* Candidate Profile 
+* Curriculum/Day
+* Interview History Entry 
+* Theta/Ability Estimate 
+* Pending Question
+* Answer
+* The Arguments Passed To evaluate_and_ask()
+
+Please give me the relevant classes and field names or dictionaries, along with their exact shape or enough context around the code to know what it is.
+
+Also check that:
+
+* `ai/schemas.py` has NOT been changed since last commit
+* `evaluate_and_ask()` takes in raw `history` object
+* Person A's Orchestrator DOES NOT compute embeddings, similarity, and confidence before calling it
+* Chroma Vector Store is NOT being used anywhere
+
+Do not implement `ai/context.py` just yet.
+Do not change any code.
 
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
