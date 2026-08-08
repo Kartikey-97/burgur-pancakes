@@ -108,11 +108,17 @@ def process_turn(session_state: dict, candidate_data: dict, user_message: str, c
         session_state['history'] = []
         
         first_topic = topics[0] if topics else "general software engineering"
-        question = generate_opening_question(candidate_data, f"Day {first_topic}")
+        
+        try:
+            question = generate_opening_question(candidate_data, f"Day {first_topic}")
+        except Exception as e:
+            print(f"AI Layer Error (INIT): {e}")
+            question = "Welcome to the interview! Let's start. Can you tell me a little bit about your recent projects?"
         
         session_state['pending_question'] = question
         session_state['phase'] = 'INTERVIEWING'
         session_state['distinct_days_covered'] = 1
+
         
         session_state['history'].append({"role": "assistant", "content": question})
         

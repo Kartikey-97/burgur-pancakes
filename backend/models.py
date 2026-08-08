@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 # Candidate Models
@@ -30,8 +30,9 @@ class Candidate(BaseModel):
 # API Request/Response Models
 class TurnInterviewRequest(BaseModel):
     sessionId: str
-    message: Optional[str] = None
+    message: Optional[str] = Field(default=None, max_length=5000)
     candidate: Optional[Candidate] = None # First request has this; subsequent requests might also send it defensively
+
 
 class Feedback(BaseModel):
     summary: str
