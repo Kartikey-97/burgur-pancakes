@@ -301,6 +301,75 @@ After implementation, report:
 
 Do not implement the next AI component.
 
+### AI-layer LLM wrapper (step 5)
+
+Implement only `ai/llm.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current architecture
+
+Person A's backend exposes the public integration boundary:
+
+```python
+evaluate_and_ask(
+    pending_question: str,
+    answer: str,
+    day_obj: dict,
+    candidate_profile: dict,
+    theta: float,
+    history: list[dict],
+) -> dict
+```
+
+### AI-layer service/context assembly (step 6)
+
+Implement only `ai/service.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+```text
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+└── llm.py
+```
+
+### AI-layer confidence/hedging scoring (step 7)
+
+Implement only `ai/confidence.py` for the existing Burgur-Pancakes project.
+
+This is the next incremental Person B AI-layer step.
+
+DO NOT modify, create, delete, or format any other repository file.
+
+## Current AI-layer state
+
+The Person B package currently contains:
+
+```text
+ai/
+├── __init__.py
+├── schemas.py
+├── context.py
+├── off_topic.py
+├── llm.py
+└── service.py
+```
+
+
+
+
 ## 2) kartikey
 ### Interviewer Persona (System Prompt)
 ```text
