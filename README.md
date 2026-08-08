@@ -12,11 +12,13 @@ An adaptive, multi-turn technical interview agent built for the AI Cohort hackat
 
 ### Setup
 
-Navigate to the backend directory and install the requirements (FastAPI, Uvicorn, Pydantic, etc.).
+Navigate to the backend directory, create a virtual environment, and install the requirements:
 
 ```bash
 cd backend
-pip install fastapi uvicorn pydantic requests
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### Running the API

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import TurnInterviewRequest, InterviewResponse, Feedback
+from models import TurnInterviewRequest, InterviewResponse, Feedback, Candidate
 import session
 import data_loader
 from orchestrator import process_turn
@@ -27,13 +27,13 @@ async def interview_endpoint(req: TurnInterviewRequest):
     # Candidate data is needed to process turn.
     if not session_state and not req.candidate:
         # Default to first candidate if not provided in first request
-        candidates = data_loader.CANDIDATES
-        if isinstance(candidates, dict):
-            req.candidate = next(iter(candidates.values())) if candidates else None
-        elif isinstance(candidates, list):
-            req.candidate = candidates[0] if candidates else None
+        candidates_data = data_loader.CANDIDATES
+        candidate_list = candidates_data.get('candidates', []) if isinstance(candidates_data, dict) else candidates_data
+        if candidate_list and isinstance(candidate_list, list):
+            req.candidate = Candidate(**candidate_list[0])
             
     candidate_data = req.candidate.model_dump() if req.candidate else session_state.get('candidate', {})
+
     
     if not session_state:
         session_state['candidate'] = candidate_data

@@ -181,6 +181,8 @@ def process_turn(session_state: dict, candidate_data: dict, user_message: str, c
         # Termination check
         if session_state['questions_asked'] >= 8 and session_state['distinct_days_covered'] >= 4:
             session_state['phase'] = 'CLOSING'
+        elif session_state['topic_index'] >= len(session_state['topic_queue']):
+            session_state['phase'] = 'CLOSING'
             
         return {
             "reply": next_question,
