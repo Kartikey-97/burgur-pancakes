@@ -367,6 +367,9 @@ ai/
 └── service.py
 ```
 
+## Embeddings
+
+
 
 
 
