@@ -1,61 +1,51 @@
 """
-ai/embeddings.py — Minimal embedding client for the AI layer.
+ai/embeddings.py — Local embedding utility for the AI layer.
 
-Provides a local utility to fetch embedding vectors for text using
-the Gemini API. This allows Person B's layer to compute similarity
-internally without introducing heavy local ML dependencies (like torch
-or sentence-transformers) or external vector databases.
+Provides a deterministic local embedding function using sentence-transformers,
+ensuring embeddings are generated completely locally without remote API calls
+or external vector databases.
 """
 
-import os
-import requests
 from typing import List
 
-def get_embedding(text: str) -> List[float]:
+# Module-level variable for lazy loading
+_model = None
+
+
+def embed_text(text: str) -> List[float]:
     """
-    Fetches the embedding vector for the given text using the Gemini REST API.
+    Generates a deterministic embedding vector for the given text using a local model.
+    
+    The model (BAAI/bge-small-en-v1.5) is loaded lazily on the first call to minimize
+    module import time and resource usage.
     
     Parameters
     ----------
     text: str
-        The input text to embed.
+        The input text to embed. Empty or whitespace-only strings are safely handled
+        and will return a valid embedding vector of the same dimensionality.
         
     Returns
     -------
     List[float]
-        The embedding vector.
-        
-    Raises
-    ------
-    ValueError
-        If GEMINI_API_KEY is not set or the API response is malformed.
-    requests.HTTPError
-        If the API request fails.
+        The embedding vector as a standard Python list of floats.
     """
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is not set")
+    global _model
+    
+    # 1. Lazy load the model on first use
+    if _model is None:
+        import torch
+        from sentence_transformers import SentenceTransformer
         
-    # Using text-embedding-004, the standard Gemini embedding model
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={api_key}"
-    
-    payload = {
-        "model": "models/text-embedding-004",
-        "content": {
-            "parts": [{"text": text}]
-        }
-    }
-    
-    response = requests.post(
-        url,
-        json=payload,
-        headers={"Content-Type": "application/json"},
-        timeout=30.0
-    )
-    response.raise_for_status()
-    
-    data = response.json()
-    try:
-        return data["embedding"]["values"]
-    except KeyError as e:
-        raise ValueError(f"Unexpected response structure from Gemini Embeddings API: {e}")
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
+        _model = SentenceTransformer("BAAI/bge-small-en-v1.5", device=device)
+        
+    # 2. Safely handle empty or whitespace-only inputs
+    # Embedding an empty string is a simple deterministic representation that maintains
+    # the exact same dimensionality as normal text embeddings.
+    if not text or not text.strip():
+        text = ""
+        
+    # 3. Generate embedding and return as plain Python list[float]
+    embedding = _model.encode(text, convert_to_numpy=True)
+    return embedding.tolist()
