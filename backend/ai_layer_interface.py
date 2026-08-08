@@ -1,28 +1,30 @@
 from typing import Dict, Any, List
 
-def evaluate_and_ask(candidate: Dict[str, Any], history: List[Dict[str, str]], pending_question: str, user_answer: str, next_topic_context: str = None) -> Dict[str, Any]:
+def evaluate_and_ask(
+    pending_question: str,
+    answer: str,
+    day_obj: dict,
+    candidate_profile: dict,
+    theta: float,
+    history: list[dict],
+) -> dict:
     """
     Mock function for evaluating an answer and generating the next question.
     Returns:
         {
             "score": float, # 0.0 to 4.0
-            "covers_objective": bool,
             "needs_followup": bool,
-            "followup_reason": str,
-            "notable_quote": str,
-            "confidence_flags": list,
-            "next_question": str
+            "next_question": str,
+            "notable_quote": str
         }
     """
     # Simple mock logic
+    day_title = day_obj.get("title", "the topic") if day_obj else "the topic"
     return {
         "score": 3.0,
-        "covers_objective": True,
         "needs_followup": False,
-        "followup_reason": "",
-        "notable_quote": user_answer[:20] if user_answer else "",
-        "confidence_flags": [],
-        "next_question": f"This is a mock question for topic context: {next_topic_context}" if next_topic_context else "This is a mock follow-up question."
+        "next_question": f"This is a mock question for topic context: {day_title}",
+        "notable_quote": answer[:20] if answer else ""
     }
 
 def generate_opening_question(candidate: Dict[str, Any], topic_context: str) -> str:

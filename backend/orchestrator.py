@@ -118,9 +118,6 @@ def process_turn(session_state: dict, candidate_data: dict, user_message: str, c
         session_state['pending_question'] = question
         session_state['phase'] = 'INTERVIEWING'
         session_state['distinct_days_covered'] = 1
-
-        
-        session_state['history'].append({"role": "assistant", "content": question})
         
         return {
             "reply": question,
@@ -128,23 +125,21 @@ def process_turn(session_state: dict, candidate_data: dict, user_message: str, c
         }
     
     elif phase == 'INTERVIEWING':
-        # Evaluate user answer
-        session_state['history'].append({"role": "user", "content": user_message})
-        
-        # Prepare context for next question if we don't need a followup
         current_topic = session_state['topic_queue'][session_state['topic_index']]
-        next_topic_idx = session_state['topic_index'] + 1
-        next_topic = session_state['topic_queue'][next_topic_idx] if next_topic_idx < len(session_state['topic_queue']) else None
-        next_topic_context = f"Day {next_topic}" if next_topic else None
+        
+        # Build day_obj based on current_topic
+        day_obj = {"day": current_topic, "title": f"Day {current_topic}"}
+        # In a real app, we might extract this from curriculum dict
         
         # LLM Call
         try:
             evaluation = evaluate_and_ask(
-                candidate_data, 
-                session_state['history'], 
-                session_state['pending_question'], 
-                user_message,
-                next_topic_context=next_topic_context
+                pending_question=session_state['pending_question'],
+                answer=user_message,
+                day_obj=day_obj,
+                candidate_profile=candidate_data,
+                theta=session_state['theta'],
+                history=session_state['history']
             )
         except Exception as e:
             # Fallback handling
@@ -157,9 +152,17 @@ def process_turn(session_state: dict, candidate_data: dict, user_message: str, c
         # Update theta (simple IRT approximation)
         LEARNING_RATE = 0.5
         actual_score = evaluation.get('score', 2.0)
-        # expected score could be a function of theta, mock it as 2.0 for now
         expected_score = 2.0
         session_state['theta'] += LEARNING_RATE * (actual_score / 4.0 - expected_score / 4.0)
+        
+        # Update history with Person B's required HistoryEntry schema
+        session_state['history'].append({
+            "day": current_topic,
+            "question": session_state['pending_question'],
+            "answer": user_message,
+            "score": actual_score,
+            "notable_quote": evaluation.get('notable_quote', "")
+        })
         
         # Determine next state
         session_state['questions_asked'] += 1
@@ -176,7 +179,6 @@ def process_turn(session_state: dict, candidate_data: dict, user_message: str, c
             
         next_question = evaluation.get('next_question', "Let's move on.")
         session_state['pending_question'] = next_question
-        session_state['history'].append({"role": "assistant", "content": next_question})
         
         # Termination check
         if session_state['questions_asked'] >= 8 and session_state['distinct_days_covered'] >= 4:
