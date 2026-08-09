@@ -1,676 +1,544 @@
 # Prompts
 
+> This file contains all AI prompts used to build the Burgur-Pancakes AI Interview Agent over the 48-hour hackathon. Organised by team member. Prompts are listed in the order they were used.
+
+---
+
 ## 1) Kshiraj
 
-### AI-layer scaffold (step 1)
-Created `ai/__init__.py` as a minimal package marker.
-No modules, no functionality, no new dependencies — intentionally small first step.
-Other files in `ai/` (`llm.py`, `schemas.py`, etc.) pre-exist from earlier work and are not yet part of the active scaffold.
+### AI-layer scaffold — `ai/__init__.py`
 
-### Prompt used
+Created `ai/__init__.py` as a minimal package marker. No modules, no functionality, no new dependencies — intentionally small first step.
 
-Now implement only `ai/schemas.py`.
+---
+
+### `ai/schemas.py`
+
+```
+Now implement only ai/schemas.py.
 
 The current repository has already been inspected and the public integration contract is confirmed.
 
-### Ground-truth public interface
-
 Person A calls:
 
-```python
-evaluate_and_ask(
-    pending_question: str,
-    answer: str,
-    day_obj: dict,
-    candidate_profile: dict,
-    theta: float,
-    history: list[dict],
-) -> dict
-```
+    evaluate_and_ask(
+        pending_question: str,
+        answer: str,
+        day_obj: dict,
+        candidate_profile: dict,
+        theta: float,
+        history: list[dict],
+    ) -> dict
 
 The combined per-turn result is:
 
-```python
-{
-    "score": ...,
-    "needs_followup": ...,
-    "next_question": ...,
-    "notable_quote": ...
-}
+    {
+        "score": ...,
+        "needs_followup": ...,
+        "next_question": ...,
+        "notable_quote": ...
+    }
+
+This represents ONE LLM operation per interview turn. There is no similar_prior_answer argument. SQLite is the only persistence layer. Do not add Chroma, chromadb, vector stores, or any other database.
+
+At minimum, create a schema for the result of evaluate_and_ask() containing: score, needs_followup, next_question, notable_quote.
+
+Do NOT put any of the following in schemas.py: Gemini/API calls, prompt construction, evaluation logic, question-generation logic, follow-up logic, embedding generation, cosine similarity, question deduplication, confidence/hedging scoring, database access, Chroma/vector-store logic.
+
+The schema for evaluate_and_ask() must NOT contain confidence_flags. Do not create separate public schemas that imply separate LLM calls such as QuestionResponse, EvaluationResponse, FollowupResponse.
+
+Constraints:
+1. Inspect existing project/dependencies first.
+2. Follow existing Python style.
+3. Modify/create ONLY ai/schemas.py.
+4. Keep the implementation small and easy to review.
+5. Do not modify ai/__init__.py, Person A's files, or any other file.
+6. After implementation, run a minimal import/validation test.
 ```
 
-This represents ONE LLM operation per interview turn.
+---
 
-There is no `similar_prior_answer` argument. Person B's AI package owns local similarity/embedding logic internally.
+### Codebase inspection before `ai/context.py`
 
-SQLite is the only persistence layer. Do not add or model Chroma, chromadb, vector stores, or any other database.
-
-### What `schemas.py` should do
-
-Create only the minimal shared typed data schemas needed by the Person B AI layer.
-
-Prefer Pydantic if the project already uses/depends on it. Otherwise use standard Python dataclasses. Do not introduce a new dependency merely for this file.
-
-At minimum, create a schema for the result of `evaluate_and_ask()` containing:
-
-* `score`
-* `needs_followup`
-* `next_question`
-* `notable_quote`
-
-Also create minimal schemas for the input/context data only if they are genuinely useful for the later AI modules.
-
-The current context consists of:
-
-* `pending_question: str`
-* `answer: str`
-* `day_obj: dict`
-* `candidate_profile: dict`
-* `theta: float`
-* `history: list[dict]`
-
-Do NOT duplicate Person A's database/session models unnecessarily.
-
-### Important boundaries
-
-Do NOT put any of the following in `schemas.py`:
-
-* Gemini/API calls
-* prompt construction
-* evaluation logic
-* question-generation logic
-* follow-up logic
-* embedding generation
-* cosine similarity
-* question deduplication
-* confidence/hedging scoring
-* database access
-* Chroma/vector-store logic
-
-Confidence/hedging is a separate local function and is NOT an LLM response field.
-
-The schema for `evaluate_and_ask()` must therefore NOT contain `confidence_flags`.
-
-Do not create separate public schemas that imply separate LLM calls such as:
-
-* `QuestionResponse`
-* `EvaluationResponse`
-* `FollowupResponse`
-
-The public per-turn result is one combined response.
-
-### Implementation constraints
-
-1. Inspect the existing project/dependencies first.
-2. Follow the existing Python style.
-3. Modify/create ONLY `ai/schemas.py`.
-4. Keep the implementation small and easy to review.
-5. Do not modify `ai/__init__.py`, Person A's files, or any other file.
-6. After implementation, run a minimal import/validation test for the new schemas.
-
-Report:
-
-* exactly which schemas were added
-* why each schema exists
-* how the main response schema maps to `evaluate_and_ask()`
-* the validation/import test performed
-
-Do not implement the next AI module yet.
-
-### AI-layer context inspection
-
-Before we do anything, examine the current codebase so that we can make a definition of the next AI-layer increment based on the current code.
-
-DO NOT change any code in any file.
+```
+Before we do anything, examine the current codebase so that we can make a definition of the next AI-layer increment based on the current code. DO NOT change any code in any file.
 
 Examine:
+1. backend/session.py
+2. backend/models.py
+3. backend/orchestrator.py
+4. backend/ai_layer_interface.py
+5. ai/schemas.py
 
-1. `backend/session.py`
-2. `backend/models.py`
-3. `backend/orchestrator.py`
-4. `backend/ai_layer_interface.py`
-5. `ai/schemas.py`
-
-I need the structure of:
-
-* Candidate Profile 
-* Curriculum/Day
-* Interview History Entry 
-* Theta/Ability Estimate 
-* Pending Question
-* Answer
-* The Arguments Passed To evaluate_and_ask()
-
-Please give me the relevant classes and field names or dictionaries, along with their exact shape or enough context around the code to know what it is.
+I need the structure of: Candidate Profile, Curriculum/Day, Interview History Entry, Theta/Ability Estimate, Pending Question, Answer, The Arguments Passed To evaluate_and_ask().
 
 Also check that:
+- ai/schemas.py has NOT been changed since last commit
+- evaluate_and_ask() takes in raw history object
+- Person A's Orchestrator DOES NOT compute embeddings, similarity, and confidence before calling it
+- Chroma Vector Store is NOT being used anywhere
 
-* `ai/schemas.py` has NOT been changed since last commit
-* `evaluate_and_ask()` takes in raw `history` object
-* Person A's Orchestrator DOES NOT compute embeddings, similarity, and confidence before calling it
-* Chroma Vector Store is NOT being used anywhere
+Do not implement ai/context.py just yet. Do not change any code.
+```
 
-Do not implement `ai/context.py` just yet.
-Do not change any code.
+---
 
-### AI-layer off-topic pre-filter (step 4)
+### `ai/off_topic.py`
 
-Implement only `ai/off_topic.py` for the existing Burgur-Pancakes project.
+```
+Implement only ai/off_topic.py for the existing Burgur-Pancakes project.
 
 The current public contract is fixed:
+    def is_off_topic(user_answer: str) -> bool
 
-def is_off_topic(user_answer: str) -> bool:
-    ...
+Person A calls this synchronously before evaluate_and_ask() on every INTERVIEWING turn.
 
-Person A calls this synchronously before `evaluate_and_ask()` on every INTERVIEWING turn.
-
-### Ground-truth constraints
-
-- Input is ONLY the raw answer string.
-- No question is provided.
-- No history is provided.
-- No candidate profile is provided.
-- No curriculum/day context is provided.
-- Therefore this function CANNOT reliably determine semantic topical relevance.
-- It must NOT make an LLM/API call.
-- It must NOT use a vector database.
-- Do not introduce external dependencies.
-- Keep it fast and deterministic.
-- False positives are more harmful than false negatives because `True` completely short-circuits the interview turn.
-
-### Purpose
+Ground-truth constraints:
+- Input is ONLY the raw answer string. No question, no history, no candidate profile, no curriculum context.
+- Must NOT make an LLM/API call. Must NOT use a vector database.
+- Keep it fast and deterministic. False positives are more harmful than false negatives.
 
 Implement a conservative local pre-filter that detects obviously invalid/gibberish/spam-like input.
 
-It may detect signals such as:
+It may detect: empty/whitespace-only, keyboard-mashing/random-character strings, excessive punctuation or symbol-only, digit-only, single character repeated excessively.
 
-- empty or whitespace-only answers
-- keyboard-mashing/random-character strings
-- excessive punctuation or symbol-only input
-- digit-only input
-- a single character repeated excessively
-- obvious repeated-character noise
+It must NOT attempt semantic topic detection. Do NOT classify these as off-topic:
+"Yes", "No", "Python", "O(n)", "Caching", "REST", "Transformers", "It depends", "Because it is faster.", "I would use caching here."
 
-It must NOT attempt semantic topic detection because the function does not receive the question.
+Also allow code-heavy answers: "x = 10 + y", "if x == y", "O(n^2) = O(n log n)", "return x == y", "HTTP 200 OK", "top_k = 10"
 
-### Important behavior
+Requirements:
+1. Create only ai/off_topic.py. Use only Python standard-library functionality.
+2. Expose exactly: def is_off_topic(user_answer: str) -> bool
+3. Keep it small, readable, deterministic, conservative.
+4. Must fail safely — unexpected input/errors must not crash the orchestrator.
+5. Do not modify backend/, ai/schemas.py, ai/context.py, ai/__init__.py, prompt.md
 
-Prefer allowing uncertain answers through.
+Validate with test cases (TRUE: "", "   ", "!!!!!!!!", "123456789", "aaaaaaaaaaaaaaaa") and (FALSE: all the allowed examples above plus several normal technical answers).
+```
 
-For example, do NOT automatically classify these as off-topic:
+---
 
-- "Yes"
-- "No"
-- "Python"
-- "O(n)"
-- "Caching"
-- "REST"
-- "Transformers"
-- "It depends"
-- "Because it is faster."
-- "I would use caching here."
+### `ai/llm.py`
 
-These may be legitimate interview answers.
-
-Also allow code-heavy and number-heavy technical answers such as:
-
-- "x = 10 + y"
-- "if x == y"
-- "O(n^2) = O(n log n)"
-- "return x == y"
-- "HTTP 200 OK"
-- "top_k = 10"
-
-Do not require specific technical keywords.
-
-Do not use a large hard-coded keyword list.
-
-Do not classify a single English word such as `"gibberish"` as off-topic merely because it sounds meaningless. Without question context, it cannot be distinguished reliably from `"Python"` or `"Caching"`.
-
-### Implementation requirements
-
-1. Create only `ai/off_topic.py`.
-2. Use only Python standard-library functionality.
-3. Expose exactly:
-
-   def is_off_topic(user_answer: str) -> bool:
-
-4. Keep the implementation small, readable, deterministic, and conservative.
-5. The function must fail safely: unexpected input/errors should not crash the interview orchestrator.
-6. Do not modify:
-   - `backend/`
-   - `ai/schemas.py`
-   - `ai/context.py`
-   - `ai/__init__.py`
-   - `prompt.md`
-
-7. Do not implement:
-   - confidence scoring
-   - embeddings
-   - similarity search
-   - question deduplication
-   - Gemini/API calls
-   - prompt generation
-   - answer evaluation
-   - question generation
-   - feedback generation
-
-### Validation
-
-After implementation, run tests covering at least:
-
-TRUE / blocked:
-
-- `""`
-- `"   "`
-- `"!!!!!!!!"`
-- `"123456789"`
-- `"aaaaaaaaaaaaaaaa"`
-
-FALSE / allowed:
-
-- `"Yes"`
-- `"No"`
-- `"Python"`
-- `"O(n)"`
-- `"Caching"`
-- `"REST"`
-- `"It depends"`
-- `"Because it is faster."`
-- `"I would use caching here."`
-- `"Transformers"`
-- `"gibberish"`
-- `"x = 10 + y"`
-- `"if x == y"`
-- `"O(n^2) = O(n log n)"`
-- `"return x == y"`
-- `"HTTP 200 OK"`
-- `"top_k = 10"`
-
-Also test several normal technical answers.
-
-Do not create a permanent validation/test file unless the existing project testing structure requires it. Temporary validation scripts should remain outside the repository.
-
-After implementation, report:
-
-- the exact implementation
-- the detection rules
-- every test case and result
-- confirmation that no external API or dependency was introduced
-- confirmation that no other repository files were modified
-
-Do not implement the next AI component.
-
-### AI-layer LLM wrapper (step 5)
-
-Implement only `ai/llm.py` for the existing Burgur-Pancakes project.
-
-This is the next incremental Person B AI-layer step.
-
-DO NOT modify, create, delete, or format any other repository file.
-
-## Current architecture
+```
+Implement only ai/llm.py for the existing Burgur-Pancakes project. This is the next incremental Person B AI-layer step. DO NOT modify, create, delete, or format any other repository file.
 
 Person A's backend exposes the public integration boundary:
+    evaluate_and_ask(pending_question, answer, day_obj, candidate_profile, theta, history) -> dict
 
-```python
-evaluate_and_ask(
-    pending_question: str,
-    answer: str,
-    day_obj: dict,
-    candidate_profile: dict,
-    theta: float,
-    history: list[dict],
-) -> dict
+This is the LLM wrapper that calls the Gemini API. Expose a single function that takes a prompt string and returns generated text. Keep it thin — no prompt construction logic here, just the API call. Model should be configurable. Handle API errors gracefully.
 ```
 
-### AI-layer service/context assembly (step 6)
+---
 
-Implement only `ai/service.py` for the existing Burgur-Pancakes project.
+### `ai/service.py`
 
-This is the next incremental Person B AI-layer step.
+```
+Implement only ai/service.py for the existing Burgur-Pancakes project. This is the next incremental Person B AI-layer step. DO NOT modify, create, delete, or format any other repository file.
 
-DO NOT modify, create, delete, or format any other repository file.
+Current AI-layer state:
+    ai/
+    ├── __init__.py
+    ├── schemas.py
+    ├── context.py
+    ├── off_topic.py
+    └── llm.py
 
-## Current AI-layer state
-
-The Person B package currently contains:
-
-```text
-ai/
-├── __init__.py
-├── schemas.py
-├── context.py
-├── off_topic.py
-└── llm.py
+This is the service/context assembly layer. It builds the full prompt from the InterviewContext, calls the LLM wrapper, parses the JSON response, and returns an EvaluateAndAskResult. The public function signature must match Person A's expected evaluate_and_ask() call.
 ```
 
-### AI-layer confidence/hedging scoring (step 7)
+---
 
-Implement only `ai/confidence.py` for the existing Burgur-Pancakes project.
+### `ai/confidence.py`
 
-This is the next incremental Person B AI-layer step.
+```
+Implement only ai/confidence.py for the existing Burgur-Pancakes project. This is the next incremental Person B AI-layer step. DO NOT modify, create, delete, or format any other repository file.
 
-DO NOT modify, create, delete, or format any other repository file.
+Current AI-layer state:
+    ai/
+    ├── __init__.py
+    ├── schemas.py
+    ├── context.py
+    ├── off_topic.py
+    ├── llm.py
+    └── service.py
 
-## Current AI-layer state
-
-The Person B package currently contains:
-
-```text
-ai/
-├── __init__.py
-├── schemas.py
-├── context.py
-├── off_topic.py
-├── llm.py
-└── service.py
+This is a local (no LLM) confidence/hedging scorer. It should detect signals like excessive hedging ("I think", "maybe", "not sure"), contradiction patterns, and vague buzzword answers with no specifics. Returns a list of flag strings. Public API: def score_confidence(answer: str) -> list[str]
 ```
 
-## Embeddings
+---
 
+### Fix embeddings — replace Gemini API with local model
+
+```
 Update only the dependency declaration needed for the Person B local embedding implementation.
 
-IMPORTANT:
-The existing `ai/embeddings.py` implementation is currently WRONG because it uses the Gemini embedding API. Do not use or preserve that implementation.
+IMPORTANT: The existing ai/embeddings.py implementation is currently WRONG because it uses the Gemini embedding API. Do not use or preserve that implementation.
 
-## Current state
+Current backend/requirements.txt:
+    fastapi
+    uvicorn
+    pydantic
+    requests
 
-`backend/requirements.txt` currently contains exactly:
+The local Python environment has been verified to support:
+- Python 3.13.9 / Apple Silicon arm64
+- sentence-transformers 5.7.0 / torch 2.13.0 / numpy 2.5.1 / Apple MPS available
 
-fastapi
-uvicorn
-pydantic
-requests
-
-The local Python environment has already been verified to support:
-
-- Python 3.13.9
-- Apple Silicon arm64
-- sentence-transformers 5.7.0
-- torch 2.13.0
-- numpy 2.5.1
-- Apple MPS available
-
-## Required change
-
-Modify ONLY:
-
-```text
-backend/requirements.txt
+Modify ONLY backend/requirements.txt to add sentence-transformers.
+Then rewrite ai/embeddings.py to use the local BAAI/bge-small-en-v1.5 model.
+Public API: def embed_text(text: str) -> list[float]
+Load the model once at module level. Return 384-dimensional vectors as plain Python lists.
 ```
 
-## Similarity 
-Implement only `ai/similarity.py` for the existing Burgur-Pancakes project.
+---
 
-This is the next incremental Person B AI-layer step.
+### `ai/similarity.py`
 
-DO NOT modify, create, delete, or format any other repository file.
+```
+Implement only ai/similarity.py for the existing Burgur-Pancakes project. This is the next incremental Person B AI-layer step. DO NOT modify, create, delete, or format any other repository file.
 
-## Current AI-layer state
+Current AI-layer state includes ai/embeddings.py now using BAAI/bge-small-en-v1.5 returning 384-dimensional vectors as plain Python lists.
 
-The Person B package currently contains:
+Goal: minimal local semantic similarity utility. Its only responsibility is to compare two already-computed embedding vectors and return their cosine similarity.
 
-ai/
-├── __init__.py
-├── schemas.py
-├── context.py
-├── off_topic.py
-├── llm.py
-├── service.py
-├── confidence.py
-└── embeddings.py
+Public API:
+    def cosine_similarity(
+        embedding_a: list[float],
+        embedding_b: list[float],
+    ) -> float
 
-`ai/embeddings.py` is now implemented using the local model:
-
-BAAI/bge-small-en-v1.5
-
-It returns 384-dimensional embedding vectors as plain Python lists.
-
-## Goal
-
-Create a minimal local semantic similarity utility.
-
-Its only responsibility is to compare two already-computed embedding vectors and return their cosine similarity.
-
-## Public API
-
-Implement:
-
-```python
-def cosine_similarity(
-    embedding_a: list[float],
-    embedding_b: list[float],
-) -> float:
-    ...
+Use only numpy (already a transitive dependency of sentence-transformers). Do not import torch or sentence-transformers here. Keep it to ~10 lines.
 ```
 
-# Memory
+---
 
-### AI-layer semantic memory retrieval (next step)
+### `ai/memory.py`
 
-Implement only `ai/memory.py` for the existing Burgur-Pancakes project.
-
-This is the next incremental Person B AI-layer step.
-
-DO NOT modify, create, delete, or format any other repository file.
-
-## Current AI-layer state
-
-The Person B package currently contains:
-
-ai/
-├── __init__.py
-├── schemas.py
-├── context.py
-├── off_topic.py
-├── llm.py
-├── service.py
-├── confidence.py
-├── embeddings.py
-└── similarity.py
-
-The existing modules provide:
-
-- `ai.embeddings.embed_text(text)`:
-    text -> local 384-dimensional embedding using
-    `BAAI/bge-small-en-v1.5`
-
-- `ai.similarity.cosine_similarity(a, b)`:
-    two embeddings -> cosine similarity float
-
-- `ai.context.HistoryEntry`:
-    {
-        "day": int,
-        "question": str,
-        "answer": str,
-        "score": int,
-        "notable_quote": str | None
-    }
-
-## Goal
-
-Create a minimal semantic-memory retrieval utility.
-
-Its only responsibility is:
-
-Given the candidate's current answer and the existing interview history, find the most semantically similar previous interview answer.
-
-This will later allow `evaluate_and_ask()` to make callbacks such as:
-
-"Earlier you mentioned X. How would that apply here?"
-
-## Public API
-
-Implement:
-
-```python
-def find_similar_prior_answer(
-    current_answer: str,
-    history: list[dict],
-) -> Optional[dict]:
-    ...
 ```
+Implement only ai/memory.py for the existing Burgur-Pancakes project. This is the next incremental Person B AI-layer step. DO NOT modify, create, delete, or format any other repository file.
 
-### AI-layer question deduplication (next step)
-
-Implement only `ai/deduplication.py` for the existing Burgur-Pancakes project.
-
-This is the next incremental Person B AI-layer step.
-
-DO NOT modify, create, delete, or format any other repository file.
-
-## Current AI-layer state
-
-The Person B package currently contains:
-
-ai/
-├── __init__.py
-├── schemas.py
-├── context.py
-├── off_topic.py
-├── llm.py
-├── service.py
-├── confidence.py
-├── embeddings.py
-├── similarity.py
-└── memory.py
+Current AI-layer state:
+    ai/
+    ├── __init__.py, schemas.py, context.py, off_topic.py
+    ├── llm.py, service.py, confidence.py
+    ├── embeddings.py
+    └── similarity.py
 
 Existing utilities:
+- ai.embeddings.embed_text(text) -> local 384-dim embedding using BAAI/bge-small-en-v1.5
+- ai.similarity.cosine_similarity(a, b) -> float
+- ai.context.HistoryEntry: {day, question, answer, score, notable_quote}
 
-- `ai.embeddings.embed_text(text)` generates a local embedding using
-  `BAAI/bge-small-en-v1.5`.
+Goal: Given the candidate's current answer and the existing interview history, find the most semantically similar previous interview answer. This allows evaluate_and_ask() to make callbacks like "Earlier you mentioned X — how does that apply here?"
 
-- `ai.similarity.cosine_similarity(a, b)` computes cosine similarity.
+Public API:
+    def find_similar_prior_answer(
+        current_answer: str,
+        history: list[dict],
+    ) -> Optional[dict]
 
-- `ai.memory.find_similar_prior_answer(current_answer, history)` retrieves
-  the most semantically similar previous answer.
-
-## Goal
-
-Create a minimal local question-deduplication utility.
-
-Its responsibility is to determine whether a newly generated interview
-question is semantically too similar to a question that has already been
-asked in the interview history.
-
-This prevents the interviewer from repeatedly asking essentially the same
-question using slightly different wording.
-
-## Public API
-
-Implement:
-
-```python
-def is_duplicate_question(
-    new_question: str,
-    history: list[dict],
-    threshold: float = 0.85,
-) -> bool:
-    ...
-
+Return the history entry if similarity >= 0.75, else None.
 ```
 
+---
 
+### `ai/deduplication.py`
 
-## 2) kartikey
-### Interviewer Persona (System Prompt)
-```text
-You are Priya Nair, a senior technical interviewer conducting a real, live technical
-interview. You are warm but rigorous — never robotic, never a quiz show host, never
-say "Question 1 of 8."
+```
+Implement only ai/deduplication.py for the existing Burgur-Pancakes project. This is the next incremental Person B AI-layer step. DO NOT modify, create, delete, or format any other repository file.
+
+Current AI-layer state:
+    ai/
+    ├── __init__.py, schemas.py, context.py, off_topic.py
+    ├── llm.py, service.py, confidence.py
+    ├── embeddings.py, similarity.py
+    └── memory.py
+
+Goal: Determine whether a newly generated interview question is semantically too similar to a question already asked. Prevents the interviewer from repeatedly asking the same question with different wording.
+
+Public API:
+    def is_duplicate_question(
+        new_question: str,
+        history: list[dict],
+        threshold: float = 0.85,
+    ) -> bool
+
+Compare new_question against every entry["question"] in history. Return True if any similarity >= threshold.
+```
+
+---
+
+## 2) Kartikey
+
+### Backend architecture planning
+
+```
+I want to build an AI Interview Agent for a hackathon. The concept is a 31-day AI engineering cohort (RAG, Vector DBs, Prompt Engineering, Agentic AI, MCP, Deployment). After completing the cohort, learners need to be able to explain the systems they built. I want an agent that conducts personalized technical interviews based on a candidate's learning journey.
+
+We have multiple team members:
+- Me (Kartikey): backend API, state machine, session management, AI prompts
+- AI team: LLM wrapper, evaluation logic, embeddings  
+- Frontend: React/Next.js UI
+
+What should the backend structure look like? I need FastAPI with SSE streaming, SQLite session persistence, and a state machine (INITIALIZING → QUESTIONING → EVALUATING → CLOSING).
+```
+
+---
+
+### FastAPI backend setup — `main.py`, `models.py`, `session.py`, `data_loader.py`
+
+```
+Let's set up the FastAPI project. I need:
+1. main.py — FastAPI app with CORS enabled (allow all for hackathon), /api/health endpoint, and /api/interview_stream POST endpoint returning StreamingResponse with media_type="text/event-stream"
+2. models.py — TurnInterviewRequest with sessionId, message, candidate (nested: member, missions, signals), mcq_enabled. Also Feedback model.
+3. session.py — SQLite persistence with load_session() and save_session() that serialize state dict as JSON. No ORM needed.
+4. data_loader.py — load candidates.json and curriculum JSON at module import time into CANDIDATES and CURRICULUM globals.
+```
+
+---
+
+### Orchestrator state machine
+
+```
+Build the orchestrator state machine in orchestrator.py. The flow:
+1. INITIALIZING: First turn with empty message — select first question based on candidate's passed missions
+2. QUESTIONING: Candidate sends answer — evaluate it, decide follow-up or next topic
+3. After 8 questions minimum: generate feedback and close
+
+Stream everything via SSE:
+- {"type": "text", "content": "..."} for streaming tokens
+- {"type": "done", "reply": "...", "done": False, "theta": float} for turn completion
+- {"type": "done", "done": True, "feedback": {...}, "history": [...]} for interview end
+
+Use yield f"data: {json.dumps(payload)}\n\n" format throughout.
+```
+
+---
+
+### Cutoff bug fix
+
+```
+There's a bug. On the very last turn (question 8), the session ends immediately after the candidate submits their answer without letting the AI respond. The candidate's final answer gets cut off and we jump straight to results.
+
+The issue: is_final_turn is evaluated before streaming the final AI acknowledgment. Fix it so we stream the AI's final response first, and only THEN yield the done: true event with feedback.
+```
+
+---
+
+### Include full history in done event
+
+```
+I need to add the full interview history to the done event payload when the interview ends, so the frontend can build a per-question breakdown without an extra API call. Each history entry should have: day, question, answer, score, notable_quote, cheat_flagged.
+```
+
+---
+
+### Cheat detection
+
+```
+Add cheat detection. If a candidate pastes a giant pre-written answer instead of typing it, the CPS (characters per second) will be impossibly high. Implement a heuristic check in the orchestrator — track last_turn_timestamp in session state, calculate CPS on each turn, flag if CPS > 300 and len(answer) > 100. Store cheat_flagged in the history entry and surface it in results.
+```
+
+---
+
+### Interviewer Persona — system prompt for Priya
+
+```
+You are Priya Nair, a senior technical interviewer conducting a real, live technical interview. You are warm but rigorous — never robotic, never a quiz show host, never say "Question 1 of 8."
 
 Calibrate your tone and question depth to the candidate:
-- yearsExperience >= 10: assume strong fundamentals, ask about trade-offs, scale,
-  failure modes, and "why did you choose X over Y" rather than definitions.
+- yearsExperience >= 10: assume strong fundamentals, ask about trade-offs, scale, failure modes, and "why did you choose X over Y" rather than definitions.
 - yearsExperience 3-9: mix of practical "how did you build X" and conceptual depth.
-- yearsExperience < 3 or non-technical jobRole (e.g. Business Analyst, Marketing,
-  HR): favor clear, grounded questions about what they built and why it mattered,
-  without dumbing down the subject matter itself.
+- yearsExperience < 3 or non-technical jobRole (e.g. Business Analyst, Marketing, HR): favor clear, grounded questions about what they built and why it mattered, without dumbing down the subject matter itself.
 
-Never ask about a topic the candidate skipped. You may reference it briefly in
-closing feedback as a gap, never as a question.
+Never ask about a topic the candidate skipped. You may reference it briefly in closing feedback as a gap, never as a question.
 
-Speak in one short paragraph or less per turn. No bullet lists in the interview
-itself — this is a conversation, not a form.
+Speak in one short paragraph or less per turn. No bullet lists in the interview itself — this is a conversation, not a form.
+
+Integrate this as the SYSTEM_PROMPT constant in ai_layer_interface.py. Also add: never say "Great answer!" or "That's correct!" — patronizing. Never introduce yourself or explain the format. If candidate says "I don't know", acknowledge briefly and move on.
 ```
 
-### Question Generation
-```text
-Context provided: curriculum day (title, tools, objectives), candidate's mission
-record for that day (attempts, passed), candidate profile, full prior Q&A history
-so far this session, and whether this is a NEW TOPIC or a FOLLOW-UP.
+---
 
-If NEW TOPIC and there is a relevant earlier answer in history from a different
-day, open with a natural callback ("Earlier you mentioned X when we talked about
-embeddings — how does that change when...") before asking the new question. Only
-do this when there's a genuine conceptual link — don't force it.
+### Question generation prompt
 
-If FOLLOW-UP: the candidate's last answer was thin, evasive, or partially correct.
-Ask ONE targeted follow-up that probes the specific gap — don't repeat the
-original question in different words.
+```
+Context provided: curriculum day (title, tools, objectives), candidate's mission record for that day (attempts, passed), candidate profile, full prior Q&A history so far this session, and whether this is a NEW TOPIC or a FOLLOW-UP.
 
-If attempts >= 4 for this day: gently probe whether their understanding is solid
-now, e.g. "That one took a few tries during the cohort — walk me through what
-clicked for you," which surfaces genuine signal about learning vs brute-forcing.
+If NEW TOPIC and there is a relevant earlier answer in history from a different day, open with a natural callback ("Earlier you mentioned X when we talked about embeddings — how does that change when...") before asking the new question. Only do this when there's a genuine conceptual link — don't force it.
+
+If FOLLOW-UP: the candidate's last answer was thin, evasive, or partially correct. Ask ONE targeted follow-up that probes the specific gap — don't repeat the original question in different words.
+
+If attempts >= 4 for this day: gently probe whether their understanding is solid now, e.g. "That one took a few tries during the cohort — walk me through what clicked for you."
 
 Output: a single question, nothing else. No preamble, no "Great, next...".
+
+Also add: question should be answerable in 2-4 sentences — avoid multi-part compound questions. "If the candidate has already answered a highly similar question this session, do not ask it again."
 ```
 
-### Answer Evaluation
-```text
+---
+
+### Answer evaluation prompt
+
+```
 Given: the question asked, the candidate's answer, the day's learning objectives.
 
 Return strict JSON:
 {
-  "score": 0-4,                     // 0=no understanding, 4=expert depth
+  "score": 0-4,
   "covers_objective": true/false,
-  "needs_followup": true/false,     // true if shallow, vague, or dodges specifics
+  "needs_followup": true/false,
   "followup_reason": "string or null",
   "notable_quote": "short paraphrase of their strongest point, or null",
-  "confidence_flags": []            // e.g. "hedging", "contradiction", "off-topic"
+  "confidence_flags": []
 }
 
-Score generously for correct-but-informally-worded answers. Score down for
-answers that are confident but factually wrong, or that dodge the question with
-generic AI-buzzword language without specifics.
+SCORING RUBRIC (apply strictly):
+- Score 4: Demonstrates understanding of trade-offs, failure modes, or real-world constraints BEYOND the definition.
+- Score 3: Correct and specific, covers the main objective, minor gaps acceptable.
+- Score 2: Correct concept, missing specifics.
+- Score 1: Knows the name/buzzword only.
+- Score 0: Wrong, empty, off-topic, or complete non-answer.
+
+Score generously for correct-but-informally-worded answers. Score down for confident-but-wrong or generic-AI-buzzword answers with no specifics. Never give a 4 unless the answer demonstrates awareness of failure modes or real-world constraints beyond the textbook definition. Return ONLY valid JSON.
 ```
 
-### Feedback Synthesis
-```text
-Given: full interview history (all questions, answers, scores, flags) and candidate
-profile.
+---
 
-Return strict JSON matching:
+### Scoring is inconsistent — fix anchoring
+
+```
+The scoring is still inconsistent. I tested it — the same answer gets a 2 one time and a 4 another time. The model is being too generous. How do I lock it down more?
+
+Rewrite the scoring anchor so it's explicit. Add: "A candidate saying 'I'm not sure but I think...' followed by a correct answer should still score 2-3, not 1." Also add: "If the answer is off-topic, return score=0, needs_followup=false."
+```
+
+---
+
+### Feedback synthesis prompt
+
+```
+Given: full interview history (all questions, answers, scores, flags) and candidate profile.
+
+Return strict JSON:
 {
   "summary": "2-3 sentences, direct, references their actual role/trajectory",
   "strengths": ["specific, tied to a real moment in the interview, not generic"],
   "gaps": ["specific — cite the actual topic and what was missing"],
-  "next": ["concrete, actionable — a specific day/topic to revisit or practice"]
+  "next": ["concrete, actionable — a specific day/topic to revisit or practice"],
+  "topicScores": {"<topic>": <float 0.0-4.0>}
 }
 
-Every array item must be traceable to something that actually happened in this
-specific interview. No generic advice a template could have produced without the
-transcript.
+Every array item must be traceable to something that actually happened in this specific interview. No generic advice. Do NOT include items like "Study more" — every next step must name a specific topic or skill gap. Summary must mention their job role specifically. Only include topics actually tested. Calculate topicScores as the average of all question scores on that topic.
 ```
 
+---
+
+### MCQ optional format
+
+```
+The MCQ feature — if mcq_enabled is True, the AI should occasionally include multiple choice options for some questions. Prompt it to do that naturally without making every question MCQ.
+
+Add to question generation prompt: "MCQ MODE IS ENABLED. For roughly 30-40% of questions (your discretion), you may optionally provide multiple choice options in this exact format immediately after the question:
+A) [option]
+B) [option]
+C) [option]
+D) [option]
+Only use MCQ format for questions where there is a clearly correct answer. Do NOT use MCQ for open-ended questions about trade-offs, design decisions, or 'walk me through' questions. If you include options, make exactly 3 plausible and 1 clearly wrong but tempting."
+```
+
+---
+
+### Frontend setup — Next.js state machine
+
+```
+Build the Next.js frontend. I need page.tsx as a state machine for "picker", "chat", and "results" states. Fetch from the SSE endpoint at http://localhost:8000/api/interview_stream. The typing effect isn't working — text dumps all at once instead of streaming character by character.
+
+Implement processStream() using a while(true) loop with reader.read(), split chunks by \n\n delimiter, parse each event, and update React messages state immediately on each text chunk so the typing effect feels instantaneous.
+```
+
+---
+
+### Restore streaming typing effect
+
+```
+The typing effect still isn't working properly. The text just appears all at once after a delay.
+
+The issue is the TextDecoder and the SSE chunk splitting. Fix processStream in page.tsx to properly handle partial chunks — keep a partialData buffer, split on \n\n, and pop the last incomplete chunk back into the buffer before processing. Update the last message in the messages array on every text event, not at the end.
+```
+
+---
+
+### Add MCQ checkbox to CandidatePicker
+
+```
+Add a multiple choice toggle to CandidatePicker.tsx. A checkbox labeled "Enable Multiple Choice Questions (Adaptive)". Pass enableMcq state through to the onBegin callback, then include it in the initial POST body as mcq_enabled. Also pass it in every subsequent turn POST.
+```
+
+---
+
+### Framer Motion animations in ChatScreen
+
+```
+Add Framer Motion animations to ChatScreen.tsx:
+1. Each message bubble should animate in with opacity 0 → 1, y: 14 → 0, scale: 0.97 → 1
+2. Typing indicator (3 dots) should use staggered bounce animations
+3. MCQ option buttons should stagger-animate in with x: 0 → 0, opacity fade
+4. MCQ buttons should slide right on hover with translateX(3px)
+```
+
+---
+
+### Complete UI/UX overhaul — split panel, live score, adaptive progress tracker
+
+```
+The UI is still ass. It isn't utilizing the full screen properly. The results are still ass. I need a complete overhaul. Make the scores out of 100 and not 4. Think this through — if you were using this then what things would you need?
+
+Plan:
+1. Chat screen: full split-panel layout. Left sidebar (280px) with candidate info, live score gauge 0-100, adaptive progress tracker that adds question bubbles dynamically as questions are asked (not fixed Q1-Q8). Right panel: full-width chat.
+2. Results dashboard: hero animated circular score ring (0-100), per-question breakdown table (question, answer preview, score badge green/amber/red, cheat flag), per-day score bars ("Day 16: 71/100"), topic mastery bars, strengths/gaps/next in 3-column layout.
+3. Scoring math: (score/4) * 100 on frontend.
+4. Pass full history in the done event from orchestrator so frontend has everything.
+```
+
+---
+
+### Landing page overhaul — split panel with Priya avatar and custom candidate modal
+
+```
+Make the landing screen way better. Remove the emoji mic. First impressions matter. 
+
+Redesign into a full-screen split panel:
+- Left panel: Priya Nair hero (proper SVG person icon in gradient square, green online dot), 48px gradient headline "Ace your next technical interview.", feature list with 4 items (Adaptive Questioning, Context Retention, Scored in Real-Time, Detailed Report Card), trust badges (AI Cohort, Claude Powered, IRT Scoring). Decorative radial gradient orbs in background.
+- Right panel: clean white form. Replace the select dropdown with a searchable card list — each candidate is a clickable card showing name, role, years, missions passed. "Add New" button opens a slide-in modal. Modal has name/role/experience/education inputs and a day-chip grid for all 31 curriculum days. Custom candidates saved to localStorage. Animated toggle switch instead of checkbox for MCQ. Dynamic CTA button text changes to "Begin Interview with [Name] →".
+```
+
+---
+
+### Curriculum days in custom candidate modal should start from Day 1
+
+```
+The completed curriculum options should be from Day 1. Currently only showing a subset starting from Day 7. Update the CURRICULUM_DAYS array to include all 31 days from Day 1: VS Code & Python Environment Setup through Day 31: Capstone Project & Final Demo.
+```
+
+---
+
+### Deployment environment variable
+
+```
+Update the frontend so the API URL is configurable via environment variable for production deployment. Currently hardcoded to http://localhost:8000. The production backend is on Render at https://burgur-pancakes.onrender.com.
+
+Change: const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://burgur-pancakes.onrender.com";
+
+So it defaults to the Render URL in production but can be overridden locally with NEXT_PUBLIC_API_URL=http://localhost:8000.
+```
+
+---
+
 ## 3) Kunal
+
 *(Add your prompts here)*
 
-
-## 4) kartikey (UI Overhaul & Final Bug Fixes)
-### Plan & Execution
-1. **UI Polish**: Added Framer Motion to the frontend () for fluid bubble, typing dot, and multiple-choice animations. Reverted manual buffering in  so the typing effect streams in real-time.
-2. **MCQ Toggle**: Added an explicit toggle in  passed through  to  to optionally generate MCQs.
-3. **Scoring Accuracy**: Replaced the random 0.0-4.0 generic prompt with a strict rubric (0.0=gibberish, 1.0=buzzwords, 2.0=partial, 3.0=solid, 4.0=expert).
-4. **Cutoff Bug Fix**: Modified   pre-calculation to wait for the candidate's 8th answer before prematurely ending the session.
-5. **Cheat Detection**: Improved heuristic to flag if characters per second (CPS) > 50 for large strings, indicating impossible human typing speed.
-
-
-## 4) kartikey (UI Overhaul & Final Bug Fixes)
-### Plan & Execution
-1. **UI Polish**: Added Framer Motion to the frontend (`ChatScreen.tsx`) for fluid bubble, typing dot, and multiple-choice animations. Reverted manual buffering in `page.tsx` so the typing effect streams in real-time.
-2. **MCQ Toggle**: Added an explicit toggle in `CandidatePicker` passed through `models.py` to `ai_layer_interface.py` to optionally generate MCQs.
-3. **Scoring Accuracy**: Replaced the random 0.0-4.0 generic prompt with a strict rubric (0.0=gibberish, 1.0=buzzwords, 2.0=partial, 3.0=solid, 4.0=expert).
-4. **Cutoff Bug Fix**: Modified `orchestrator.py` `is_final_turn` pre-calculation to wait for the candidate's 8th answer before prematurely ending the session.
-5. **Cheat Detection**: Improved heuristic to flag if characters per second (CPS) > 50 for large strings, indicating impossible human typing speed.
+---

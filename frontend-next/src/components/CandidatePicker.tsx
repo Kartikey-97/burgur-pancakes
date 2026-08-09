@@ -218,7 +218,7 @@ export default function CandidatePicker({
         </div>
         <div className="picker-trust-bar">
           <span className="trust-badge">AI Cohort</span>
-          <span className="trust-badge">Gemini Powered</span>
+          <span className="trust-badge">Claude Powered</span>
           <span className="trust-badge">IRT Scoring</span>
         </div>
       </motion.div>
