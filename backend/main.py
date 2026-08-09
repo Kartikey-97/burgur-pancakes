@@ -52,6 +52,11 @@ def interview_stream_endpoint(req: TurnInterviewRequest):
 
     if not session_state:
         session_state['candidate'] = candidate_data
+        session_state['mcq_enabled'] = req.mcq_enabled
+    else:
+        # Allow toggling mid-session if they send it
+        if req.mcq_enabled is not None:
+            session_state['mcq_enabled'] = req.mcq_enabled
 
     curriculum = data_loader.CURRICULUM
 

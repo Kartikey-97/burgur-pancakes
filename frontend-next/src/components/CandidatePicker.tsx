@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import candidateData from "@/data/candidates.json";
 
-export default function CandidatePicker({ onBegin }: { onBegin: (candidate: any, isReplay: boolean) => void }) {
+export default function CandidatePicker({ onBegin }: { onBegin: (candidate: any, isReplay: boolean, enableMcq: boolean) => void }) {
   const [selectedId, setSelectedId] = useState("");
+  const [enableMcq, setEnableMcq] = useState(false);
   const isReplayMode = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('replay') === '1' : false;
   const candidates = candidateData.candidates || candidateData;
 
@@ -14,7 +15,7 @@ export default function CandidatePicker({ onBegin }: { onBegin: (candidate: any,
 
   const handleBegin = () => {
     if (selectedCandidate) {
-      onBegin(selectedCandidate, isReplayMode);
+      onBegin(selectedCandidate, isReplayMode, enableMcq);
     }
   };
 
@@ -67,11 +68,25 @@ export default function CandidatePicker({ onBegin }: { onBegin: (candidate: any,
           </div>
         </div>
 
+        <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input 
+            type="checkbox" 
+            id="mcq-toggle" 
+            checked={enableMcq} 
+            onChange={(e) => setEnableMcq(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <label htmlFor="mcq-toggle" style={{ fontSize: '14px', color: 'var(--text-light)', cursor: 'pointer' }}>
+            Enable Multiple Choice Questions (Adaptive)
+          </label>
+        </div>
+
         <button 
           id="begin-btn" 
           className="btn-primary" 
           disabled={!selectedCandidate} 
           onClick={handleBegin}
+          style={{ marginTop: '24px' }}
         >
           Begin Interview &rarr;
         </button>

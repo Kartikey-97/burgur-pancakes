@@ -656,3 +656,21 @@ transcript.
 
 ## 3) Kunal
 *(Add your prompts here)*
+
+
+## 4) kartikey (UI Overhaul & Final Bug Fixes)
+### Plan & Execution
+1. **UI Polish**: Added Framer Motion to the frontend () for fluid bubble, typing dot, and multiple-choice animations. Reverted manual buffering in  so the typing effect streams in real-time.
+2. **MCQ Toggle**: Added an explicit toggle in  passed through  to  to optionally generate MCQs.
+3. **Scoring Accuracy**: Replaced the random 0.0-4.0 generic prompt with a strict rubric (0.0=gibberish, 1.0=buzzwords, 2.0=partial, 3.0=solid, 4.0=expert).
+4. **Cutoff Bug Fix**: Modified   pre-calculation to wait for the candidate's 8th answer before prematurely ending the session.
+5. **Cheat Detection**: Improved heuristic to flag if characters per second (CPS) > 50 for large strings, indicating impossible human typing speed.
+
+
+## 4) kartikey (UI Overhaul & Final Bug Fixes)
+### Plan & Execution
+1. **UI Polish**: Added Framer Motion to the frontend (`ChatScreen.tsx`) for fluid bubble, typing dot, and multiple-choice animations. Reverted manual buffering in `page.tsx` so the typing effect streams in real-time.
+2. **MCQ Toggle**: Added an explicit toggle in `CandidatePicker` passed through `models.py` to `ai_layer_interface.py` to optionally generate MCQs.
+3. **Scoring Accuracy**: Replaced the random 0.0-4.0 generic prompt with a strict rubric (0.0=gibberish, 1.0=buzzwords, 2.0=partial, 3.0=solid, 4.0=expert).
+4. **Cutoff Bug Fix**: Modified `orchestrator.py` `is_final_turn` pre-calculation to wait for the candidate's 8th answer before prematurely ending the session.
+5. **Cheat Detection**: Improved heuristic to flag if characters per second (CPS) > 50 for large strings, indicating impossible human typing speed.

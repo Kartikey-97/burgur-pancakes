@@ -55,11 +55,28 @@ def evaluate_and_ask_stream(
     candidate_profile: dict,
     theta: float,
     history: list,
+    mcq_enabled: bool = False,
+    is_final_turn: bool = False
 ):
     topic_title = day_obj.get("title", "Unknown Topic")
     objectives = day_obj.get("objectives", [])
     obj_text = "\n".join(f"- {o}" for o in objectives)
     context = get_candidate_context(candidate_profile)
+    
+    mcq_instruction = ""
+    if mcq_enabled:
+        mcq_instruction = "- When appropriate (e.g. for foundational concepts), ask a Multiple Choice Question. Format the options clearly on new lines starting with A), B), C), D)."
+
+    final_instruction = ""
+    if is_final_turn:
+        final_instruction = "This is the final turn of the interview. Do NOT ask a new technical question. Just provide a brief, polite 1-sentence closing remark thanking them for their time."
+    else:
+        final_instruction = f"""- Make it CONCISE (maximum 2 sentences).
+   - Do not hallucinate long scenarios. Get straight to the point.
+   {mcq_instruction}
+   - If needs_followup is true: ask a sharp probing question based on THEIR exact words.
+   - If needs_followup is false: ask a substantive new question on {topic_title}.
+   - Be direct and natural. Do NOT start with filler like "Great!"."""
 
     prompt = f"""You are Priya Nair, a Senior Technical Interviewer conducting an AI engineering interview.
 
@@ -78,15 +95,16 @@ The candidate answered:
 "{answer}"
 
 Your task:
-1. Evaluate the answer against the topic objectives. Score from 0.0 (completely wrong) to 4.0 (perfect).
+1. Evaluate the answer strictly against the topic objectives using this rubric:
+   - 0.0: Completely wrong, off-topic, or guessing.
+   - 1.0: Vague buzzwords, lacks technical depth.
+   - 2.0: Partially correct, missing key details.
+   - 3.0: Solid conceptual understanding.
+   - 4.0: Expert-level precision with specific implementation details.
+   Score from 0.0 to 4.0 based on this rubric.
 2. Decide if a follow-up is needed (true) to probe deeper, or move on (false).
-3. Generate the next question:
-   - Make it CONCISE (maximum 2 sentences).
-   - Do not hallucinate long scenarios. Get straight to the point.
-   - When appropriate (e.g. for foundational concepts), ask a Multiple Choice Question. Format the options clearly on new lines starting with A), B), C), D).
-   - If needs_followup is true: ask a sharp probing question based on THEIR exact words.
-   - If needs_followup is false: ask a substantive new question on {topic_title}.
-   - Be direct and natural. Do NOT start with filler like "Great!".
+3. Generate the next question (or closing statement):
+   {final_instruction}
 4. Extract a notable_quote (max 10 words) from their answer.
 
 You MUST return your response in this EXACT plain text format:
@@ -94,7 +112,7 @@ SCORE: <float 0.0-4.0>
 NEEDS_FOLLOWUP: <boolean>
 NOTABLE_QUOTE: <string>
 NEXT_QUESTION:
-<your question here>"""
+<your question or closing remark here>"""
 
     client = get_client()
     try:

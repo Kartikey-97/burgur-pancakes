@@ -32,6 +32,7 @@ class TurnInterviewRequest(BaseModel):
     sessionId: str
     message: Optional[str] = Field(default=None, max_length=5000)
     candidate: Optional[Candidate] = None # First request has this; subsequent requests might also send it defensively
+    mcq_enabled: bool = False # First request has this; subsequent requests might also send it defensively
 
 
 class Feedback(BaseModel):

@@ -139,21 +139,34 @@ def process_turn_stream(session_state: dict, candidate_data: dict, user_message:
 
         # --- Cheat Detection ---
         last_timestamp = session_state.get('last_question_timestamp', time.time())
-        latency = time.time() - last_timestamp
-        cheat_detected = latency < 5.0 and len(user_message or '') > 150
+        latency = max(time.time() - last_timestamp, 0.1)
+        
+        cheat_detected = False
+        msg_len = len(user_message or '')
+        chars_per_sec = msg_len / latency
+        
+        # Humanly impossible typing speed (>50 CPS) for substantial answers, or extremely fast response
+        if (chars_per_sec > 50 and msg_len > 60) or (latency < 2.5 and msg_len > 40):
+            cheat_detected = True
 
         final_answer = user_message
         if cheat_detected:
             session_state['cheat_flags'] = session_state.get('cheat_flags', 0) + 1
             final_answer = (
-                f"[SYSTEM ALERT: Answer submitted in {latency:.1f}s with {len(user_message)} chars. "
+                f"[SYSTEM ALERT: Answer submitted in {latency:.1f}s with {msg_len} chars ({chars_per_sec:.1f} cps). "
                 f"Potential copy-paste (flag #{session_state['cheat_flags']}). "
                 f"Ask a highly specific, high-pressure follow-up to verify genuine understanding.]\n\n"
                 f"{user_message}"
             )
 
+        # --- Termination Check (Pre-calculation) ---
+        # The candidate just submitted an answer. If this brings us to >= 8 total, it's the final turn.
+        is_final_turn = (session_state.get('questions_asked', 0) + 1 >= 8) and (session_state.get('distinct_days_covered', 1) >= 4)
+        if not session_state['unvisited_topics']:
+             # Also final turn if we exhaust everything
+             is_final_turn = True
+
         # --- Streaming Evaluation Call ---
-        # The stream will output plain text: SCORE:, NEEDS_FOLLOWUP:, NOTABLE_QUOTE:, NEXT_QUESTION:
         accumulated_text = ""
         in_question_phase = False
         next_question_str = ""
@@ -165,7 +178,9 @@ def process_turn_stream(session_state: dict, candidate_data: dict, user_message:
                 day_obj=day_obj,
                 candidate_profile=candidate_data,
                 theta=session_state['theta'],
-                history=session_state['history']
+                history=session_state['history'],
+                mcq_enabled=session_state.get('mcq_enabled', False),
+                is_final_turn=is_final_turn
             )
 
             for chunk in stream:
@@ -185,7 +200,7 @@ def process_turn_stream(session_state: dict, candidate_data: dict, user_message:
 
         except Exception as e:
             print(f"[ERROR] AI Layer Error during evaluate_and_ask_stream: {e}")
-            next_question_str = "I see. Let's move on to the next topic. What can you tell me about your approach to production AI systems?"
+            next_question_str = "Let's wrap up here for now."
             yield from yield_text(next_question_str)
             accumulated_text = f"SCORE: 2.0\nNEEDS_FOLLOWUP: false\nNOTABLE_QUOTE: \nNEXT_QUESTION:\n{next_question_str}"
 
@@ -226,7 +241,10 @@ def process_turn_stream(session_state: dict, candidate_data: dict, user_message:
             next_topic = select_next_topic(current_topic, score, session_state['unvisited_topics'], curriculum)
             if next_topic:
                 session_state['current_topic'] = next_topic
-                session_state['unvisited_topics'].remove(next_topic)
+                try:
+                    session_state['unvisited_topics'].remove(next_topic)
+                except ValueError:
+                    pass
                 session_state['distinct_days_covered'] += 1
             else:
                 session_state['current_topic'] = None
@@ -237,12 +255,8 @@ def process_turn_stream(session_state: dict, candidate_data: dict, user_message:
         session_state['pending_question'] = next_question_str.strip()
         session_state['last_question_timestamp'] = time.time()
 
-        # Termination Check
-        questions_done = session_state['questions_asked'] >= 8
-        days_done = session_state['distinct_days_covered'] >= 4
-        topics_exhausted = not session_state['current_topic']
-
-        if (questions_done and days_done) or topics_exhausted:
+        # --- Termination Check (Final) ---
+        if is_final_turn:
             session_state['phase'] = 'CLOSING'
             try:
                 feedback = generate_feedback(candidate_data, session_state['history'])
@@ -254,7 +268,11 @@ def process_turn_stream(session_state: dict, candidate_data: dict, user_message:
                     "gaps": ["Could not generate detailed feedback"],
                     "next": ["Review the cohort curriculum"]
                 }
-            yield from yield_done(next_question_str.strip(), True, feedback)
+            # Include full history so frontend can build per-question breakdown
+            payload = {"type": "done", "reply": next_question_str.strip(), "done": True, 
+                       "theta": session_state.get('theta', 0.0), "feedback": feedback,
+                       "history": session_state.get('history', [])}
+            yield f"data: {json.dumps(payload)}\n\n"
             return
 
         yield from yield_done(next_question_str.strip(), False)

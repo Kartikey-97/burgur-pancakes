@@ -23,14 +23,18 @@ export default function Home() {
   const [feedback, setFeedback] = useState<any>(null);
   const [theta, setTheta] = useState(0);
   const [thetaHistory, setThetaHistory] = useState<number[]>([]);
+  const [interviewHistory, setInterviewHistory] = useState<any[]>([]);
+
+  const [mcqEnabled, setMcqEnabled] = useState(false);
 
   const processStream = async (res: Response) => {
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
     let partialData = "";
-    
-    setIsTyping(true);
-    let accumulatedText = "";
+
+    // Add an empty interviewer message bubble that we will stream text into
+    setMessages(prev => [...prev, { role: "interviewer", content: "" }]);
+    setIsTyping(false); // We are already generating, no need for the loading dots
 
     while (true) {
       const { value, done } = await reader!.read();
@@ -45,9 +49,16 @@ export default function Home() {
           try {
             const data = JSON.parse(eventStr.substring(6));
             if (data.type === "text") {
-               accumulatedText += data.content;
+               setMessages(prev => {
+                 const newMsgs = [...prev];
+                 const lastIdx = newMsgs.length - 1;
+                 newMsgs[lastIdx] = { 
+                   ...newMsgs[lastIdx], 
+                   content: newMsgs[lastIdx].content + data.content 
+                 };
+                 return newMsgs;
+               });
             } else if (data.type === "done") {
-               setMessages(prev => [...prev, { role: "interviewer", content: accumulatedText }]);
                setTheta(data.theta || 0);
                if (data.theta) {
                  setThetaHistory(prev => [...prev, data.theta]);
@@ -59,9 +70,9 @@ export default function Home() {
                    data.feedback.topicScores = { "Algorithms": 3.5, "System Design": 2.0, "Communication": 4.0 };
                  }
                  setFeedback(data.feedback);
+                 if (data.history) setInterviewHistory(data.history);
                  setTimeout(() => setAppState("results"), 2000);
                }
-               setIsTyping(false);
             }
           } catch (e) {
             console.error("SSE parse error", e, eventStr);
@@ -71,9 +82,10 @@ export default function Home() {
     }
   };
 
-  const handleBegin = async (selectedCandidate: any, replayMode: boolean) => {
+  const handleBegin = async (selectedCandidate: any, replayMode: boolean, enableMcq: boolean) => {
     setCandidate(selectedCandidate);
     setIsReplay(replayMode);
+    setMcqEnabled(enableMcq);
     setMessages([]);
     setAppState("chat");
     setIsTyping(true);
@@ -89,7 +101,8 @@ export default function Home() {
           body: JSON.stringify({
             sessionId: sid,
             message: "", 
-            candidate: selectedCandidate
+            candidate: selectedCandidate,
+            mcq_enabled: enableMcq
           })
         });
         
@@ -146,7 +159,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: sessionId,
-          message: content
+          message: content,
+          mcq_enabled: mcqEnabled
         })
       });
       
@@ -167,6 +181,7 @@ export default function Home() {
     setTheta(0);
     setThetaHistory([]);
     setQCount(0);
+    setInterviewHistory([]);
   };
 
   return (
@@ -181,10 +196,12 @@ export default function Home() {
         <ChatScreen 
           candidateName={candidate?.member.name || "Candidate"}
           candidateRole={candidate?.member.jobRole || "Role"}
+          candidateData={candidate}
           messages={messages}
           isTyping={isTyping}
           onSendMessage={handleSendMessage}
           qCount={qCount}
+          thetaHistory={thetaHistory}
         />
       )}
 
@@ -195,6 +212,7 @@ export default function Home() {
           feedback={feedback}
           theta={theta}
           thetaHistory={thetaHistory}
+          interviewHistory={interviewHistory}
           onRestart={handleRestart}
         />
       )}
