@@ -1,31 +1,16 @@
-# Byte-compiled / optimized / DLL files
+# Node
+node_modules/
+.next/
+out/
+build/
+.env*.local
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Virtual environments
 venv/
-env/
-.venv/
 .env
 
-# Database state (we don't want to commit the local session data!)
-backend/session.db
-backend/session.db-wal
-backend/session.db-shm
-*.sqlite3
-*.db
-
-# macOS
+# OS
 .DS_Store
-
-# Frontend/Node
-node_modules/
-dist/
-build/
-.next/
-
-# IDEs and Editors
-.vscode/
-.idea/
-*.swp

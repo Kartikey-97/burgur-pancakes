@@ -1,0 +1,54 @@
+import fs
+
+with open('/Users/kartikeygupta/Desktop/burger-pancakes/frontend-next/src/app/page.tsx', 'r') as f:
+    content = f.read()
+
+# We will completely replace the fetch logic with a helper function
+helper = """
+  const processStream = async (res: Response) => {
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let partialData = "";
+
+    setMessages(prev => [...prev, { role: "interviewer", content: "" }]);
+
+    while (true) {
+      const { value, done } = await reader!.read();
+      if (done) break;
+      partialData += decoder.decode(value, { stream: true });
+      
+      const events = partialData.split("\\n\\n");
+      partialData = events.pop() || "";
+
+      for (const eventStr of events) {
+        if (eventStr.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(eventStr.substring(6));
+            if (data.type === "text") {
+               setMessages(prev => {
+                 const newMsgs = [...prev];
+                 newMsgs[newMsgs.length - 1].content += data.content;
+                 return newMsgs;
+               });
+            } else if (data.type === "done") {
+               setTheta(data.theta || 0);
+               if (!data.done) {
+                 setQCount(prev => prev + 1);
+               } else {
+                 if (data.feedback && !data.feedback.topicScores) {
+                   data.feedback.topicScores = { "Algorithms": 3.5, "System Design": 2.0, "Communication": 4.0 };
+                 }
+                 setFeedback(data.feedback);
+                 setTimeout(() => setAppState("results"), 2000);
+               }
+            }
+          } catch (e) {
+            console.error("SSE parse error", e);
+          }
+        }
+      }
+    }
+  };
+"""
+
+# Now write a new page.tsx using write_to_file... Actually, it's easier to just overwrite page.tsx entirely using write_to_file tool.

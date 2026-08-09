@@ -49,6 +49,26 @@ export default function ChatScreen({ candidateName, candidateRole, messages, isT
     }
   };
 
+  const parseMessage = (content: string, role: string) => {
+    if (role === "candidate") {
+      return { text: content, options: [] };
+    }
+    
+    const lines = content.split('\n');
+    const textLines = [];
+    const options = [];
+    
+    for (const line of lines) {
+      const match = line.match(/^([A-D])\)\s*(.*)/i);
+      if (match) {
+        options.push({ key: match[1], text: match[2], full: line });
+      } else {
+        textLines.push(line);
+      }
+    }
+    return { text: textLines.join('\n').trim(), options };
+  };
+
   return (
     <div id="chat-screen" className="screen active">
       <div className="chat-header">
@@ -63,19 +83,36 @@ export default function ChatScreen({ candidateName, candidateRole, messages, isT
         </div>
       </div>
       <div id="messages">
-        {messages.map((m, i) => (
-          <div key={i} className={`msg-row ${m.role}`}>
-            <div className={`msg-avatar ${m.role}`}>
-              {m.role === 'interviewer' ? 'P' : candidateName.charAt(0)}
-            </div>
-            <div className="msg-body">
-              <div className="msg-meta">
-                {m.role === 'interviewer' ? 'Priya' : candidateName.split(' ')[0]}
+        {messages.map((m, i) => {
+          const { text, options } = parseMessage(m.content, m.role);
+          return (
+            <div key={i} className={`msg-row ${m.role}`}>
+              <div className={`msg-avatar ${m.role}`}>
+                {m.role === 'interviewer' ? 'P' : candidateName.charAt(0)}
               </div>
-              <div className="msg-bubble">{m.content}</div>
+              <div className="msg-body">
+                <div className="msg-meta">
+                  {m.role === 'interviewer' ? 'Priya' : candidateName.split(' ')[0]}
+                </div>
+                <div className="msg-bubble">{text}</div>
+                {options.length > 0 && (
+                  <div className="mcq-options">
+                    {options.map((opt, idx) => (
+                      <button 
+                        key={idx} 
+                        className="mcq-btn"
+                        disabled={isTyping || i !== messages.length - 1}
+                        onClick={() => onSendMessage(opt.full)}
+                      >
+                        <span className="mcq-key">{opt.key})</span> {opt.text}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {isTyping && (
           <div className="typing-row" id="typing-indicator">

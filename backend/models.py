@@ -39,6 +39,7 @@ class Feedback(BaseModel):
     strengths: List[str]
     gaps: List[str]
     next: List[str]
+    topicScores: Optional[Dict[str, float]] = None  # Person B's radar chart data
 
 class InterviewResponse(BaseModel):
     reply: str

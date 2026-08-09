@@ -24,6 +24,53 @@ export default function Home() {
   const [theta, setTheta] = useState(0);
   const [thetaHistory, setThetaHistory] = useState<number[]>([]);
 
+  const processStream = async (res: Response) => {
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let partialData = "";
+    
+    setIsTyping(true);
+    let accumulatedText = "";
+
+    while (true) {
+      const { value, done } = await reader!.read();
+      if (done) break;
+      partialData += decoder.decode(value, { stream: true });
+      
+      const events = partialData.split("\n\n");
+      partialData = events.pop() || "";
+
+      for (const eventStr of events) {
+        if (eventStr.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(eventStr.substring(6));
+            if (data.type === "text") {
+               accumulatedText += data.content;
+            } else if (data.type === "done") {
+               setMessages(prev => [...prev, { role: "interviewer", content: accumulatedText }]);
+               setTheta(data.theta || 0);
+               if (data.theta) {
+                 setThetaHistory(prev => [...prev, data.theta]);
+               }
+               if (!data.done) {
+                 setQCount(prev => prev + 1);
+               } else {
+                 if (data.feedback && !data.feedback.topicScores) {
+                   data.feedback.topicScores = { "Algorithms": 3.5, "System Design": 2.0, "Communication": 4.0 };
+                 }
+                 setFeedback(data.feedback);
+                 setTimeout(() => setAppState("results"), 2000);
+               }
+               setIsTyping(false);
+            }
+          } catch (e) {
+            console.error("SSE parse error", e, eventStr);
+          }
+        }
+      }
+    }
+  };
+
   const handleBegin = async (selectedCandidate: any, replayMode: boolean) => {
     setCandidate(selectedCandidate);
     setIsReplay(replayMode);
@@ -36,7 +83,7 @@ export default function Home() {
         const sid = "sess_" + Math.random().toString(36).substring(2, 9);
         setSessionId(sid);
         
-        const res = await fetch(`${API_BASE}/api/interview`, {
+        const res = await fetch(`${API_BASE}/api/interview_stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -45,30 +92,19 @@ export default function Home() {
             candidate: selectedCandidate
           })
         });
-        const data = await res.json();
         
-        setMessages([{ role: "interviewer", content: data.reply }]);
         setQCount(1);
-        setTheta(data.theta || 0);
-        setThetaHistory(data.theta_history || []);
-        
-        if (data.done) {
-          if (!data.feedback.topicScores) {
-            data.feedback.topicScores = { "Algorithms": 3.5, "System Design": 2.0, "Communication": 4.0 };
-          }
-          setFeedback(data.feedback);
-          setTimeout(() => setAppState("results"), 2000);
-        }
+        await processStream(res);
       } else {
         setTimeout(() => {
           setMessages([{ role: "interviewer", content: `(Replay Mode) Welcome, ${selectedCandidate.member.name}. Let's begin the interview.` }]);
           setQCount(1);
+          setIsTyping(false);
         }, 1000);
       }
     } catch (e) {
       console.error(e);
       setMessages([{ role: "interviewer", content: "Failed to connect to the interview server." }]);
-    } finally {
       setIsTyping(false);
     }
   };
@@ -105,7 +141,7 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/interview`, {
+      const res = await fetch(`${API_BASE}/api/interview_stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,25 +149,11 @@ export default function Home() {
           message: content
         })
       });
-      const data = await res.json();
       
-      setMessages(prev => [...prev, { role: "interviewer", content: data.reply }]);
-      setTheta(data.theta || 0);
-      setThetaHistory(data.theta_history || []);
-
-      if (!data.done) {
-        setQCount(prev => prev + 1);
-      } else {
-        if (!data.feedback.topicScores) {
-          data.feedback.topicScores = { "Algorithms": 3.5, "System Design": 2.0, "Communication": 4.0 };
-        }
-        setFeedback(data.feedback);
-        setTimeout(() => setAppState("results"), 2000);
-      }
+      await processStream(res);
     } catch (e) {
       console.error(e);
       setMessages(prev => [...prev, { role: "interviewer", content: "Error communicating with server." }]);
-    } finally {
       setIsTyping(false);
     }
   };

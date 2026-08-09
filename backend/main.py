@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from models import TurnInterviewRequest, InterviewResponse, Feedback, Candidate
 import session
 import data_loader
-from orchestrator import process_turn
+from fastapi.responses import StreamingResponse
+from orchestrator import process_turn_stream
 
 app = FastAPI(
     title="AI Interview Agent",
@@ -29,18 +30,13 @@ def health_check():
         "candidates_loaded": len(data_loader.CANDIDATES.get("candidates", [])),
     }
 
-@app.post("/api/interview", response_model=InterviewResponse, response_model_exclude_none=True)
-async def interview_endpoint(req: TurnInterviewRequest):
+@app.post("/api/interview_stream")
+def interview_stream_endpoint(req: TurnInterviewRequest):
     if not req.sessionId:
         raise HTTPException(status_code=400, detail="Missing sessionId")
 
-    # Load existing session state (returns {} for brand new sessions)
     session_state = session.load_session(req.sessionId) or {}
 
-    # Resolve candidate data:
-    # - If session already has candidate (turns 2+): use it from session
-    # - If first turn with candidate in request: use it
-    # - Fallback: use first candidate from the data file (useful for test_run.py)
     if session_state:
         candidate_data = session_state.get('candidate', {})
     elif req.candidate:
@@ -54,24 +50,19 @@ async def interview_endpoint(req: TurnInterviewRequest):
         except Exception as e:
             raise HTTPException(status_code=503, detail=f"Invalid candidate data: {e}")
 
-    # Persist the candidate data in the session so we don't need it on every request
     if not session_state:
         session_state['candidate'] = candidate_data
 
     curriculum = data_loader.CURRICULUM
 
-    # Run the state machine
-    result = process_turn(session_state, candidate_data, req.message or "", curriculum)
+    def event_generator():
+        # Stream the response events from the orchestrator
+        generator = process_turn_stream(session_state, candidate_data, req.message or "", curriculum)
+        for event in generator:
+            yield event
+        
+        # After the stream is fully complete, persist the updated session state
+        session.save_session(req.sessionId, session_state)
 
-    # Persist updated session state
-    session.save_session(req.sessionId, session_state)
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-    # Build the response
-    feedback_dict = result.get("feedback")
-    feedback_obj = Feedback(**feedback_dict) if feedback_dict else None
-
-    return InterviewResponse(
-        reply=result["reply"],
-        done=result["done"],
-        feedback=feedback_obj
-    )
