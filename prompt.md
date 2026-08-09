@@ -1,6 +1,6 @@
 # Prompts
 
-## 1) kshiraj
+## 1) Kshiraj
 
 ### AI-layer scaffold (step 1)
 Created `ai/__init__.py` as a minimal package marker.
