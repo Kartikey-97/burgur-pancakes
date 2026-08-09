@@ -8,7 +8,7 @@ import ResultsDashboard from "@/components/ResultsDashboard";
 
 type AppState = "picker" | "chat" | "results";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://burgur-pancakes.onrender.com";
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("picker");
