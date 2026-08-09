@@ -539,6 +539,141 @@ So it defaults to the Render URL in production but can be overridden locally wit
 
 ## 3) Kunal
 
-*(Add your prompts here)*
+### Next.js project setup
+
+```
+Set up a new Next.js 14 project with TypeScript inside a frontend-next/ folder. We need App Router, not Pages Router. Install framer-motion as well. The app will be a single-page interview UI that talks to a FastAPI backend via SSE streaming. Don't set up any routing beyond the root page — this is a single-screen state machine app.
+```
 
 ---
+
+### Background animated particles component
+
+```
+Create a BackgroundParticles component in React using a canvas element. It should render soft floating particles in the background — light purple/indigo toned circles that drift slowly and fade in and out. Should be position: fixed, z-index 0, full screen, pointer-events none. Keep it lightweight — no heavy libraries, use requestAnimationFrame directly. Should feel subtle not distracting. Import it in the root layout.
+```
+
+---
+
+### CandidatePicker first version
+
+```
+Build the CandidatePicker component. This is the first screen the user sees. It should:
+- Show a card with an avatar/logo for "Priya" — the AI interviewer
+- A headline: "Your personalized technical interview starts here."
+- A dropdown select to choose from the list of candidates loaded from candidates.json
+- When a candidate is selected, show a preview card with their name, role, years experience, and tags showing missions completed and commit days
+- A "Begin Interview →" button that is disabled until a candidate is selected
+- Import candidate data directly from @/data/candidates.json
+
+Style it nicely — centered card, clean typography, soft shadows.
+```
+
+---
+
+### ChatScreen first version
+
+```
+Build the ChatScreen component. Props: candidateName, messages (array of {role: "interviewer"|"candidate", content: string}), isTyping boolean, onSendMessage callback, qCount number.
+
+Layout:
+- Header bar showing "Technical Interview" title and a question counter pill showing "Q {qCount}"
+- Scrollable messages area taking up most of the screen
+- Interviewer messages on the left with an avatar, candidate messages on the right in a dark bubble
+- Typing indicator (3 animated dots) when isTyping is true
+- Input area at the bottom: a textarea that sends on Enter (Shift+Enter for newline), a send button
+
+Messages should auto-scroll to bottom when new ones arrive. Use useRef and scrollIntoView.
+```
+
+---
+
+### Parse MCQ options from message content
+
+```
+The backend sometimes returns messages with multiple choice options formatted like:
+A) Some option here
+B) Another option
+C) Third option
+D) Fourth option
+
+In ChatScreen, detect when a message contains these options and render them as clickable buttons instead of just plain text. The question text should still show above the buttons. When a button is clicked it should call onSendMessage with the full option text. Buttons should be disabled once an option has been selected or when isTyping is true.
+```
+
+---
+
+### ResultsDashboard first version
+
+```
+Build a ResultsDashboard component. It receives feedback (summary, strengths, gaps, next, topicScores) and a theta score. Display:
+- A top summary section with the candidate's name and the summary text
+- Three columns: Strengths (green), Gaps to Address (red), Next Steps (amber) — each as a list of items with a colored icon
+- A radar/spider chart showing topicScores — use a simple SVG polygon chart, no chart library needed
+- A "Start Another Interview" button that calls onRestart
+
+Keep the design clean and readable. This is what the candidate sees at the end so it needs to look professional.
+```
+
+---
+
+### Improve ResultsDashboard — make scores feel meaningful
+
+```
+The results dashboard looks okay but the scores feel wrong. The topicScores come back as 0-4 floats but displaying "3.5 / 4" looks weird. Convert everything to percentages out of 100. Also the radar chart looks broken on some screen sizes. Replace it with horizontal progress bars — one per topic, labeled with the topic name and score like "RAG: 87%". Use green for >= 70, amber for 40-70, red for below 40.
+```
+
+---
+
+### Add smooth page transitions between screens
+
+```
+Right now when switching between picker, chat, and results screens the transition is instant and jarring. Add AnimatePresence from framer-motion so each screen fades in with opacity 0 → 1 and a slight upward slide (y: 20 → 0) over 0.3s. The outgoing screen should fade out simultaneously. Wrap the conditional rendering in page.tsx with AnimatePresence and add motion.div wrappers around each screen component.
+```
+
+---
+
+### Mobile responsiveness pass
+
+```
+The app is currently only designed for desktop. Do a responsiveness pass:
+- On screens < 768px, the chat sidebar should collapse/hide
+- The messages area should use full width on mobile
+- The candidate picker card should be full width with reduced padding
+- The results dashboard columns should stack vertically on mobile
+- Input textarea should be slightly smaller on mobile
+
+Don't break the desktop layout — use media queries or Tailwind responsive prefixes.
+```
+
+---
+
+### globals.css design tokens and typography
+
+```
+Set up globals.css with a proper design system using CSS custom properties. I want:
+- A light theme with a soft blue-grey background (#f0f4ff)
+- Accent color: indigo (#6366f1) with light variant rgba(99,102,241,0.12)
+- Text colors: primary (#0f172a), light (#475569), muted (#94a3b8)
+- Status colors: green (#10b981), amber (#f59e0b), red (#ef4444) each with light variants
+- Border: rgba(0,0,0,0.06) for subtle, rgba(0,0,0,0.12) for stronger
+- Surface colors: rgba(255,255,255,0.92) for glass, #ffffff for solid
+- Typography: import Inter from Google Fonts, set it as the body font with -webkit-font-smoothing antialiased
+- Base body styles: overflow hidden, height 100vh, background var(--bg)
+```
+
+---
+
+### Fix chat input auto-resize
+
+```
+The textarea in the chat input area doesn't resize as the user types multiple lines. It stays at one line height which is annoying for longer answers. Make it auto-resize:
+- Start at 1 row height
+- Grow up to a max of about 120px as the user types
+- Reset back to 1 row after sending a message
+- Don't show a scrollbar while it's expanding
+
+Use a useEffect on the textarea ref that sets height to "auto" then to scrollHeight on every value change.
+```
+
+---
+
